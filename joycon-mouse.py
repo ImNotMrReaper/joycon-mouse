@@ -2,6 +2,7 @@
 # noinspection SpellCheckingInspection,PyUnusedLocal,PyBroadException
 """
 Nintendo Switch Joy-Con & Multi-Gamepad Desktop Driver for Linux.
+Zero-dependency, pure Python Linux kernel interface using fcntl, struct, select, and uinput.
 Location: joycon-mouse.py
 """
 
@@ -28,7 +29,7 @@ try:
 except ImportError:
     SecurityManager = None
 
-# Linux Input Constants & ioctls
+# Linux Input Event Types & ioctls
 EVENT_SYN = 0x00
 EVENT_KEY = 0x01
 EVENT_REL = 0x02
@@ -71,43 +72,56 @@ def ioctl_write(type_char: str, number: int, size: int) -> int:
 
 
 def eviocgname(length: int = 256) -> int:
-    return (2 << 30) | (length << 16) | (ord('E') << 8) | 0x06
+    return (2 << 30) | (length << 16) | (ord("E") << 8) | 0x06
 
 
-EVIOCGRAB = ioctl_write('E', 0x90, 4)
+EVIOCGRAB = ioctl_write("E", 0x90, 4)
 
-UI_SET_EVBIT = ioctl_write('U', 100, 4)
-UI_SET_KEYBIT = ioctl_write('U', 101, 4)
-UI_SET_RELBIT = ioctl_write('U', 102, 4)
-UI_DEV_CREATE = ioctl_none('U', 1)
-UI_DEV_DESTROY = ioctl_none('U', 2)
-UI_DEV_SETUP = ioctl_write('U', 3, 92)
+UI_SET_EVBIT = ioctl_write("U", 100, 4)
+UI_SET_KEYBIT = ioctl_write("U", 101, 4)
+UI_SET_RELBIT = ioctl_write("U", 102, 4)
+UI_DEV_CREATE = ioctl_none("U", 1)
+UI_DEV_DESTROY = ioctl_none("U", 2)
+UI_DEV_SETUP = ioctl_write("U", 3, 92)
 
-IS_64_BIT = struct.calcsize('P') == 8
-EVENT_STRUCT_FORMAT = 'llHHi' if IS_64_BIT else 'iiHHi'
+IS_64_BIT = struct.calcsize("P") == 8
+EVENT_STRUCT_FORMAT = "llHHi" if IS_64_BIT else "iiHHi"
 EVENT_STRUCT_SIZE = struct.calcsize(EVENT_STRUCT_FORMAT)
 
 
-@dataclass
-class MotionSettings:
-    enabled: bool = True
-    sensitivity_x: float = 0.048
-    sensitivity_y: float = 0.048
-    dead_zone: float = 2.0
-    smoothing_factor: float = 0.30
-    accel_exponent: float = 1.30
-    vertical_orientation: bool = True
-    invert_x: bool = False
-    invert_y: bool = False
-    calibration_frames: int = 60
+class DriverLogger:
+    """Structured driver logger for console and optional log file."""
+
+    def __init__(self, debug: bool = False, log_file: Optional[str] = None):
+        self.debug = debug
+        self.log_file = log_file
+        if self.log_file:
+            try:
+                os.makedirs(os.path.dirname(os.path.abspath(self.log_file)), exist_ok=True)
+                with open(self.log_file, "a", encoding="utf-8") as f:
+                    f.write(f"\n--- Session Started: {time.strftime("%Y-%m-%d %H:%M:%S")} ---\n")
+            except Exception as e:
+                print(f"[Logger Warning] Could not open log file {self.log_file}: {e}")
+
+    def log(self, message: str, level: str = "INFO") -> None:
+        timestamp = time.strftime("%H:%M:%S")
+        formatted = f"[{timestamp}] [{level}] {message}"
+        if level in ("INFO", "WARN", "ERROR") or self.debug:
+            print(formatted)
+        if self.log_file:
+            try:
+                with open(self.log_file, "a", encoding="utf-8") as f:
+                    f.write(formatted + "\n")
+            except Exception:
+                pass
 
 
 @dataclass
 class JoystickSettings:
     enabled: bool = True
-    speed_x: float = 20.0
-    speed_y: float = 20.0
-    dead_zone: float = 0.14
+    speed_x: float = 24.0
+    speed_y: float = 24.0
+    dead_zone: float = 0.12
     accel_exponent: float = 2.0
     invert_x: bool = False
     invert_y: bool = False
@@ -117,9 +131,8 @@ class JoystickSettings:
 class DeviceProfile:
     name: str
     description: str
-    motion: MotionSettings = field(default_factory=MotionSettings)
     joystick: JoystickSettings = field(default_factory=JoystickSettings)
-    scroll_repeat_ms: int = 85
+    scroll_repeat_ms: int = 80
 
 
 def is_game_active() -> Optional[str]:
@@ -136,27 +149,25 @@ def is_game_active() -> Optional[str]:
 
 def get_device_profile(profile_name: str) -> DeviceProfile:
     titles = {
-        "right_joycon": "Nintendo Switch Right Joy-Con (Vertical Air-Mouse)",
-        "left_joycon": "Nintendo Switch Left Joy-Con (Vertical Air-Mouse)",
+        "right_joycon": "Nintendo Switch Right Joy-Con (Desktop Controller)",
+        "left_joycon": "Nintendo Switch Left Joy-Con (Desktop Controller)",
         "dual_joycon": "Nintendo Switch Combined Dual Joy-Cons (Grip / Split)",
         "switch_pro": "Nintendo Switch Pro Controller (USB / Bluetooth)",
-        "playstation": "Sony PlayStation Controller (PS5 DualSense / PS4 / PS3)",
-        "xbox": "Microsoft Xbox Controller (Xbox 360 / One / Series X/S)",
+        "playstation": "Sony PlayStation Controller (DualSense / DualShock)",
+        "xbox": "Microsoft Xbox Controller (Xbox 360 / One / Series)",
         "generic_gamepad": "Universal Gamepad (8BitDo / DirectInput / XInput)"
     }
-    is_vertical = profile_name in ("right_joycon", "left_joycon")
     return DeviceProfile(
         name=profile_name,
         description=titles.get(profile_name, "Gamepad Controller"),
-        motion=MotionSettings(enabled=True, vertical_orientation=is_vertical),
-        joystick=JoystickSettings(enabled=True, speed_x=22.0, speed_y=22.0)
+        joystick=JoystickSettings(enabled=True, speed_x=25.0, speed_y=25.0, dead_zone=0.12)
     )
 
 
 class VirtualMouseDevice:
-    """Manages virtual mouse and multimedia keyboard via /dev/uinput."""
+    """Manages virtual mouse and keyboard events via /dev/uinput."""
 
-    def __init__(self, device_name: str = "Joy-Con Modular Desktop Controller"):
+    def __init__(self, device_name: str = "Joy-Con Desktop Controller"):
         self.device_name = device_name
         self.file_descriptor: Optional[int] = None
         self.active_keys: Set[int] = set()
@@ -171,25 +182,25 @@ class VirtualMouseDevice:
                     break
                 except PermissionError:
                     raise PermissionError(
-                        f"Cannot open {path}. Ensure user is in the 'input' group or run with appropriate permissions."
+                        f"Cannot open {path}. Ensure user is in the 'input' group: sudo usermod -aG input $USER"
                     )
                 except OSError:
                     continue
 
         if self.file_descriptor is None:
             raise FileNotFoundError(
-                "Neither /dev/uinput nor /dev/input/uinput is accessible. Ensure 'uinput' kernel module is loaded."
+                "Neither /dev/uinput nor /dev/input/uinput is accessible. Ensure 'uinput' module is loaded: sudo modprobe uinput"
             )
 
         fcntl.ioctl(self.file_descriptor, UI_SET_EVBIT, EVENT_SYN)
         fcntl.ioctl(self.file_descriptor, UI_SET_EVBIT, EVENT_KEY)
         fcntl.ioctl(self.file_descriptor, UI_SET_EVBIT, EVENT_REL)
 
-        for relative_axis in [AXIS_REL_X, AXIS_REL_Y, AXIS_REL_WHEEL, AXIS_REL_HWHEEL]:
-            fcntl.ioctl(self.file_descriptor, UI_SET_RELBIT, relative_axis)
+        for rel_axis in [AXIS_REL_X, AXIS_REL_Y, AXIS_REL_WHEEL, AXIS_REL_HWHEEL]:
+            fcntl.ioctl(self.file_descriptor, UI_SET_RELBIT, rel_axis)
 
-        for mouse_btn in [MOUSE_BTN_LEFT, MOUSE_BTN_RIGHT, MOUSE_BTN_MIDDLE, MOUSE_BTN_BACK, MOUSE_BTN_FORWARD]:
-            fcntl.ioctl(self.file_descriptor, UI_SET_KEYBIT, mouse_btn)
+        for btn in [MOUSE_BTN_LEFT, MOUSE_BTN_RIGHT, MOUSE_BTN_MIDDLE, MOUSE_BTN_BACK, MOUSE_BTN_FORWARD]:
+            fcntl.ioctl(self.file_descriptor, UI_SET_KEYBIT, btn)
 
         for key in range(1, 256):
             try:
@@ -198,13 +209,13 @@ class VirtualMouseDevice:
                 pass
 
         try:
-            name_bytes = self.device_name.encode('utf-8')[:79].ljust(80, b'\x00')
-            setup_struct = struct.pack('HHHH80sI', BUS_USB, 0x057E, 0x2009, 1, name_bytes, 0)
+            name_bytes = self.device_name.encode("utf-8")[:79].ljust(80, b"\x00")
+            setup_struct = struct.pack("HHHH80sI", BUS_USB, 0x057E, 0x2009, 1, name_bytes, 0)
             fcntl.ioctl(self.file_descriptor, UI_DEV_SETUP, setup_struct)
             fcntl.ioctl(self.file_descriptor, UI_DEV_CREATE, 0)
         except OSError:
-            name_bytes = self.device_name.encode('utf-8')[:79].ljust(80, b'\x00')
-            user_dev = struct.pack('80sHHHHII', name_bytes, BUS_USB, 0x057E, 0x2009, 1, 0, 0) + (b'\x00' * 1024)
+            name_bytes = self.device_name.encode("utf-8")[:79].ljust(80, b"\x00")
+            user_dev = struct.pack("80sHHHHII", name_bytes, BUS_USB, 0x057E, 0x2009, 1, 0, 0) + (b"\x00" * 1024)
             os.write(self.file_descriptor, user_dev)
             fcntl.ioctl(self.file_descriptor, UI_DEV_CREATE, 0)
 
@@ -293,103 +304,8 @@ class VirtualMouseDevice:
         self.close()
 
 
-class MotionFilter:
-    """Processes IMU gyroscope inputs into smooth cursor deltas with drift auto-calibration."""
-
-    def __init__(self, config: MotionSettings, device_type: str):
-        self.config = config
-        self.device_type = device_type
-        self.bias_x = 0.0
-        self.bias_y = 0.0
-        self.bias_z = 0.0
-        self.calibrating = True
-        self.sample_count = 0
-        self.sum_x = 0.0
-        self.sum_y = 0.0
-        self.sum_z = 0.0
-        self.smooth_dx = 0.0
-        self.smooth_dy = 0.0
-        self.subpixel_x = 0.0
-        self.subpixel_y = 0.0
-        self.gyro_axes = {"rx": 0.0, "ry": 0.0, "rz": 0.0}
-
-    def update_axis(self, code: int, value: int) -> None:
-        if code == 0x03:
-            self.gyro_axes["rx"] = float(value)
-        elif code == 0x04:
-            self.gyro_axes["ry"] = float(value)
-        elif code == 0x05:
-            self.gyro_axes["rz"] = float(value)
-
-    def process(self) -> Tuple[int, int]:
-        if not self.config.enabled:
-            return 0, 0
-
-        gyro_x = self.gyro_axes["rx"]
-        gyro_y = self.gyro_axes["ry"]
-        gyro_z = self.gyro_axes["rz"]
-
-        if self.calibrating:
-            self.sum_x += gyro_x
-            self.sum_y += gyro_y
-            self.sum_z += gyro_z
-            self.sample_count += 1
-            if self.sample_count >= self.config.calibration_frames:
-                self.bias_x = self.sum_x / self.sample_count
-                self.bias_y = self.sum_y / self.sample_count
-                self.bias_z = self.sum_z / self.sample_count
-                self.calibrating = False
-            return 0, 0
-
-        clean_x = gyro_x - self.bias_x
-        clean_y = gyro_y - self.bias_y
-        clean_z = gyro_z - self.bias_z
-
-        if self.config.vertical_orientation:
-            if self.device_type == "right_joycon":
-                raw_dx = -clean_z
-                raw_dy = -clean_x
-            elif self.device_type == "left_joycon":
-                raw_dx = clean_z
-                raw_dy = -clean_x
-            else:
-                raw_dx = -clean_z
-                raw_dy = -clean_x
-        else:
-            raw_dx = -clean_y
-            raw_dy = -clean_x
-
-        if self.config.invert_x:
-            raw_dx = -raw_dx
-        if self.config.invert_y:
-            raw_dy = -raw_dy
-
-        magnitude = math.sqrt(raw_dx * raw_dx + raw_dy * raw_dy)
-        if magnitude < self.config.dead_zone:
-            self.smooth_dx = 0.0
-            self.smooth_dy = 0.0
-            return 0, 0
-
-        direction_x = raw_dx / magnitude
-        direction_y = raw_dy / magnitude
-        effective_magnitude = magnitude - self.config.dead_zone
-        scaled_magnitude = math.pow(effective_magnitude * self.config.sensitivity_x, self.config.accel_exponent)
-
-        alpha = 1.0 - max(0.0, min(0.95, self.config.smoothing_factor))
-        self.smooth_dx = (alpha * direction_x * scaled_magnitude) + ((1.0 - alpha) * self.smooth_dx)
-        self.smooth_dy = (alpha * direction_y * scaled_magnitude) + ((1.0 - alpha) * self.smooth_dy)
-
-        self.subpixel_x += self.smooth_dx
-        self.subpixel_y += self.smooth_dy
-        pixel_dx = int(self.subpixel_x)
-        pixel_dy = int(self.subpixel_y)
-        self.subpixel_x -= pixel_dx
-        self.subpixel_y -= pixel_dy
-        return pixel_dx, pixel_dy
-
-
 class JoystickFilter:
-    """Processes analog stick values with radial deadzone and acceleration curves."""
+    """Processes analog stick deflection with radial deadzone and acceleration curves."""
 
     def __init__(self, config: JoystickSettings):
         self.config = config
@@ -435,16 +351,15 @@ class JoystickFilter:
 class ControllerNode:
     path: str
     name: str
-    is_imu: bool
     device_type: str
     connection_type: str = "Bluetooth / Wireless"
 
 
 def classify_device(device_name: str, event_path: str) -> Optional[ControllerNode]:
     name_lower = device_name.lower()
-    if "virtual" in name_lower or "uinput" in name_lower:
+    if "virtual" in name_lower or "uinput" in name_lower or "imu" in name_lower or "sensor" in name_lower or "gyro" in name_lower:
         return None
-    is_imu = any(keyword in name_lower for keyword in ["imu", "gyro", "motion", "sensor"])
+
     conn = "Wired USB" if "usb" in name_lower or "wired" in name_lower else "Bluetooth / Wireless"
 
     if "right joy-con" in name_lower or "joy-con (r)" in name_lower:
@@ -467,13 +382,12 @@ def classify_device(device_name: str, event_path: str) -> Optional[ControllerNod
     return ControllerNode(
         path=event_path,
         name=device_name,
-        is_imu=is_imu,
         device_type=dev_type,
         connection_type=conn
     )
 
 
-def discover_input_devices() -> List[Tuple[ControllerNode, Optional[ControllerNode]]]:
+def discover_input_devices() -> List[ControllerNode]:
     detected_nodes: List[ControllerNode] = []
 
     for event_path in sorted(
@@ -485,7 +399,7 @@ def discover_input_devices() -> List[Tuple[ControllerNode, Optional[ControllerNo
             descriptor = os.open(event_path, os.O_RDONLY | os.O_NONBLOCK)
             buffer = bytearray(256)
             fcntl.ioctl(descriptor, eviocgname(256), buffer)
-            device_name = buffer.split(b'\x00', 1)[0].decode('utf-8', errors='ignore').strip()
+            device_name = buffer.split(b"\x00", 1)[0].decode("utf-8", errors="ignore").strip()
             os.close(descriptor)
         except OSError:
             continue
@@ -497,52 +411,29 @@ def discover_input_devices() -> List[Tuple[ControllerNode, Optional[ControllerNo
         if node is not None:
             detected_nodes.append(node)
 
-    pads = [node for node in detected_nodes if not node.is_imu]
-    imus = [node for node in detected_nodes if node.is_imu]
-    paired_list: List[Tuple[ControllerNode, Optional[ControllerNode]]] = []
-    used_imu_paths: Set[str] = set()
-
-    for pad in pads:
-        matched_imu: Optional[ControllerNode] = None
-        for imu in imus:
-            if imu.path in used_imu_paths:
-                continue
-            if pad.device_type == imu.device_type or \
-               ("right" in pad.name.lower() and "right" in imu.name.lower()) or \
-               ("left" in pad.name.lower() and "left" in imu.name.lower()) or \
-               ("(r)" in pad.name.lower() and "(r)" in imu.name.lower()) or \
-               ("(l)" in pad.name.lower() and "(l)" in imu.name.lower()) or \
-               ("pro controller" in pad.name.lower() and "pro controller" in imu.name.lower()) or \
-               ("dualsense" in pad.name.lower() and "dualsense" in imu.name.lower()):
-                matched_imu = imu
-                used_imu_paths.add(imu.path)
-                break
-        paired_list.append((pad, matched_imu))
-
-    return paired_list
+    return detected_nodes
 
 
 def run_controller_session(
-    pads: List[Tuple[ControllerNode, Optional[ControllerNode]]],
+    pads: List[ControllerNode],
     profile: DeviceProfile,
     security_mgr: Optional[Any] = None,
-    verbose: bool = False,
+    logger: Optional[DriverLogger] = None,
     exclusive_grab: bool = True
 ) -> None:
-    """Runs the main event polling loop with auto-dormant detection and dynamic mode loading."""
+    """Runs event polling with auto-dormant detection and dynamic mode execution."""
     active_modes = load_all_modes()
     if not active_modes:
         print("[Error] No modes found in 'modes/' directory. Ensure mode files exist.")
         return
 
+    log = logger or DriverLogger()
     uinput = VirtualMouseDevice(device_name=f"{profile.description} (Virtual Device)")
-    open_descriptors: Dict[int, Tuple[ControllerNode, bool]] = {}
+    open_descriptors: Dict[int, ControllerNode] = {}
     poll_object = select.poll()
-
-    motion_filters: Dict[str, MotionFilter] = {}
     joystick_filters: Dict[str, JoystickFilter] = {}
 
-    for pad_node, imu_node in pads:
+    for pad_node in pads:
         try:
             pad_fd = os.open(pad_node.path, os.O_RDONLY | os.O_NONBLOCK)
             if exclusive_grab:
@@ -550,25 +441,11 @@ def run_controller_session(
                     fcntl.ioctl(pad_fd, EVIOCGRAB, 1)
                 except OSError:
                     pass
-            open_descriptors[pad_fd] = (pad_node, False)
+            open_descriptors[pad_fd] = pad_node
             poll_object.register(pad_fd, select.POLLIN | select.POLLERR | select.POLLHUP)
             joystick_filters[pad_node.path] = JoystickFilter(profile.joystick)
         except OSError:
             continue
-
-        if imu_node is not None:
-            try:
-                imu_fd = os.open(imu_node.path, os.O_RDONLY | os.O_NONBLOCK)
-                if exclusive_grab:
-                    try:
-                        fcntl.ioctl(imu_fd, EVIOCGRAB, 1)
-                    except OSError:
-                        pass
-                open_descriptors[imu_fd] = (imu_node, True)
-                poll_object.register(imu_fd, select.POLLIN | select.POLLERR | select.POLLHUP)
-                motion_filters[imu_node.path] = MotionFilter(profile.motion, pad_node.device_type)
-            except OSError:
-                pass
 
     if not open_descriptors:
         return
@@ -604,10 +481,8 @@ def run_controller_session(
 
         print("\n" + "=" * 65)
         print("  CONNECTED CONTROLLERS:")
-        for idx, (p_node, i_node) in enumerate(pads, 1):
-            imu_info = f" + Motion IMU ({i_node.path})" if i_node is not None else " (No Gyro IMU)"
-            print(f"   [{idx}] {p_node.name} [{p_node.connection_type}]")
-            print(f"       Pad: {p_node.path}{imu_info}")
+        for idx, p_node in enumerate(pads, 1):
+            print(f"   [{idx}] {p_node.name} [{p_node.connection_type}] -> {p_node.path}")
         print("-" * 65)
         print(f"  ACTIVE MODE [{mode_index + 1}/{total_modes}]: [{current_active_mode.name}]")
         print(f"  CHEAT-CODE UNLOCK & SUDO: [{sec_status}]")
@@ -625,7 +500,7 @@ def run_controller_session(
 
         for desc in sorted(unique_actions):
             print(f"  * {desc}")
-        print("\nTip: Enter secret combo anytime to unlock screen or fulfill sudo.")
+        print("\nTip: Press + or - to cycle active mode.")
         print("Tip: Tap Home/Capture for Super (Windows Key) | Hold >= 0.4s for Screenshot.")
         print("Tip: Auto-Dormant enabled (Releases controller automatically when games launch).")
         print("=" * 65 + "\n")
@@ -636,7 +511,7 @@ def run_controller_session(
         while True:
             now_time = time.time()
 
-            # Auto-Dormant: Check for running games every 2 seconds
+            # Auto-Dormant check every 2 seconds
             if (now_time - last_game_check_time) > 2.0:
                 last_game_check_time = now_time
                 active_game = is_game_active()
@@ -644,11 +519,11 @@ def run_controller_session(
                 if active_game and not is_dormant:
                     is_dormant = True
                     set_grab_state(False)
-                    print(f"\n>>> [Auto-Dormant] Game detected ({active_game}). Controller released to game.")
+                    log.log(f"Game detected ({active_game}). Controller released to game.", level="INFO")
                 elif not active_game and is_dormant:
                     is_dormant = False
                     set_grab_state(True)
-                    print("\n>>> [Auto-Dormant] Game exited. Resuming Joy-Con desktop control.")
+                    log.log("Game exited. Resuming Joy-Con desktop control.", level="INFO")
                     print_status_banner()
 
             if is_dormant:
@@ -667,14 +542,14 @@ def run_controller_session(
                     except OSError:
                         return
 
-                    node_info, is_imu = open_descriptors.get(descriptor, (None, False))
+                    node_info = open_descriptors.get(descriptor)
                     if node_info is None:
                         continue
 
                     total_events = len(raw_data) // EVENT_STRUCT_SIZE
                     for event_index in range(total_events):
                         offset = event_index * EVENT_STRUCT_SIZE
-                        event_chunk = raw_data[offset: offset + EVENT_STRUCT_SIZE]
+                        event_chunk = raw_data[offset : offset + EVENT_STRUCT_SIZE]
                         _, _, event_type, code, value = struct.unpack(EVENT_STRUCT_FORMAT, event_chunk)
 
                         if event_type == EVENT_KEY:
@@ -686,8 +561,8 @@ def run_controller_session(
                             button_map = active_mode.get_button_map(node_info.device_type)
                             action_config = button_map.get(code)
 
-                            if verbose and action_config is None and value == 1:
-                                print(f"[Hardware Key Event] Unmapped Code: {code} (Hex: 0x{code:03X}) on {node_info.name}")
+                            if log.debug:
+                                log.log(f"Key Event: code={code} (0x{code:03x}) val={value} on {node_info.name}", level="DEBUG")
 
                             if action_config is not None:
                                 action_type = action_config.get("action")
@@ -695,6 +570,7 @@ def run_controller_session(
 
                                 if action_type == "mode_cycle" and value == 1:
                                     mode_index = (mode_index + 1) % total_modes
+                                    log.log(f"Switched mode to [{get_current_mode().name}]", level="INFO")
                                     print_status_banner()
 
                                 elif action_type == "smart_home":
@@ -704,7 +580,7 @@ def run_controller_session(
                                     elif value == 0:
                                         if smart_press_timestamp is not None and not smart_hold_triggered:
                                             uinput.tap_key(KEY_CODE_LEFTMETA)
-                                            print("[Smart Button] Tapped -> Home / Application Overview (Super Key)")
+                                            log.log("[Smart Button] Tapped -> Super (Windows Key)", level="INFO")
                                         smart_press_timestamp = None
                                         smart_hold_triggered = False
 
@@ -724,15 +600,10 @@ def run_controller_session(
                                         active_scroll_direction = 0
 
                         elif event_type == EVENT_ABS:
-                            if is_imu:
-                                m_filter = motion_filters.get(node_info.path)
-                                if m_filter is not None:
-                                    m_filter.update_axis(code, value)
-                            else:
-                                if code in (0x00, 0x01, 0x03, 0x04):
-                                    j_filter = joystick_filters.get(node_info.path)
-                                    if j_filter is not None:
-                                        j_filter.update_axis(code, value)
+                            if code in (0x00, 0x01, 0x03, 0x04):
+                                j_filter = joystick_filters.get(node_info.path)
+                                if j_filter is not None:
+                                    j_filter.update_axis(code, value)
 
             delta_time = now_time - last_tick_timestamp
             last_tick_timestamp = now_time
@@ -741,29 +612,20 @@ def run_controller_session(
                 if (now_time - smart_press_timestamp) >= hold_threshold_sec:
                     uinput.tap_key(KEY_CODE_SYSRQ)
                     smart_hold_triggered = True
-                    print("[Smart Button] Held -> Screenshot Captured (PrintScreen)")
+                    log.log("[Smart Button] Held -> Screenshot (PrintScreen)", level="INFO")
 
             active_mode = get_current_mode()
 
-            if active_mode.enable_motion or active_mode.enable_joystick_cursor:
-                total_motion_dx = 0
-                total_motion_dy = 0
-                if active_mode.enable_motion:
-                    for m_filter in motion_filters.values():
-                        mdx, mdy = m_filter.process()
-                        total_motion_dx += mdx
-                        total_motion_dy += mdy
-
+            if active_mode.enable_joystick_cursor:
                 total_joy_dx = 0
                 total_joy_dy = 0
-                if active_mode.enable_joystick_cursor:
-                    for j_filter in joystick_filters.values():
-                        jdx, jdy = j_filter.process(delta_time)
-                        total_joy_dx += jdx
-                        total_joy_dy += jdy
+                for j_filter in joystick_filters.values():
+                    jdx, jdy = j_filter.process(delta_time)
+                    total_joy_dx += jdx
+                    total_joy_dy += jdy
 
-                if (total_motion_dx + total_joy_dx) != 0 or (total_motion_dy + total_joy_dy) != 0:
-                    uinput.move_cursor(total_motion_dx + total_joy_dx, total_motion_dy + total_joy_dy)
+                if total_joy_dx != 0 or total_joy_dy != 0:
+                    uinput.move_cursor(total_joy_dx, total_joy_dy)
 
                 if active_scroll_direction != 0 and (now_time - last_scroll_timestamp) >= (profile.scroll_repeat_ms / 1000.0):
                     uinput.emit_scroll(active_scroll_direction)
@@ -776,11 +638,11 @@ def run_controller_session(
                         if jdx > 4:
                             uinput.tap_key(KEY_CODE_RIGHT)
                             last_media_seek_timestamp = now_time
-                            print("[Media Seek] Forward +5s")
+                            log.log("[Media Seek] Forward +5s", level="INFO")
                         elif jdx < -4:
                             uinput.tap_key(KEY_CODE_LEFT)
                             last_media_seek_timestamp = now_time
-                            print("[Media Seek] Rewind -5s")
+                            log.log("[Media Seek] Rewind -5s", level="INFO")
 
     finally:
         for fd in open_descriptors.keys():
@@ -796,48 +658,53 @@ def run_controller_session(
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="joycon-mouse",
-        description="Nintendo Switch Joy-Con & Multi-Gamepad Air-Mouse, Media Remote, and Secure Unlock Driver for Linux."
+        description="Nintendo Switch Joy-Con & Multi-Gamepad Desktop Driver for Linux."
     )
     parser.add_argument("-l", "--list", action="store_true", help="List detected controllers and exit.")
     parser.add_argument("-p", "--profile", type=str, default=None,
                         choices=["right_joycon", "left_joycon", "dual_joycon", "switch_pro", "playstation", "xbox", "generic_gamepad"],
                         help="Force specific profile.")
-    parser.add_argument("-s", "--sensitivity", type=float, default=1.0, help="Pointer sensitivity multiplier.")
+    parser.add_argument("-s", "--sensitivity", type=float, default=1.0, help="Pointer sensitivity multiplier (e.g. 1.2 or 0.8).")
     parser.add_argument("--set-code", action="store_true", help="Launch interactive wizard to set or change cheat-code.")
-    parser.add_argument("--horizontal", action="store_true", help="Use horizontal grip orientation.")
+    parser.add_argument("--test-buttons", action="store_true", help="Launch real-time interactive button and stick diagnostic tool.")
+    parser.add_argument("--log-file", type=str, default=None, help="Save driver logs to a specified file.")
     parser.add_argument("--no-grab", action="store_true", help="Disable exclusive device grabbing (not recommended with Steam).")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Print debug events and unmapped scan codes.")
+    parser.add_argument("-v", "--verbose", "--debug", dest="debug", action="store_true", help="Print real-time debug events.")
     parser.add_argument("--no-reconnect", action="store_true", help="Do not wait and auto-reconnect on disconnect.")
     args = parser.parse_args()
 
+    if args.test_buttons:
+        from test_buttons import main as test_main
+        return test_main()
+
+    logger = DriverLogger(debug=args.debug, log_file=args.log_file)
     security_mgr = SecurityManager() if SecurityManager is not None else None
-    controller_pairs = discover_input_devices()
 
     if args.list:
+        controllers = discover_input_devices()
         print("\nDetected Controllers in /dev/input/event*:")
-        for index, (pad_item, imu_item) in enumerate(controller_pairs, 1):
-            imu_label = f" + Motion IMU ({imu_item.path})" if imu_item is not None else ""
-            print(f"  [{index}] {pad_item.name} [{pad_item.connection_type}] ({pad_item.device_type}){imu_label} -> {pad_item.path}")
-        if not controller_pairs:
+        for idx, pad in enumerate(controllers, 1):
+            print(f"  [{idx}] {pad.name} [{pad.connection_type}] ({pad.device_type}) -> {pad.path}")
+        if not controllers:
             print("  No compatible Joy-Cons or Gamepads detected.")
             print("  Ensure Bluetooth pairing or USB connection is established.")
         print()
         return 0
 
     while True:
-        controller_pairs = discover_input_devices()
-        if not controller_pairs:
-            print("[Waiting] No Joy-Cons or Gamepads detected. Turn on or plug in controller to connect...")
+        controllers = discover_input_devices()
+        if not controllers:
+            print("[Waiting] No Joy-Cons or Gamepads detected. Turn on or plug in controller...")
             time.sleep(2.0)
             continue
 
-        primary_pad, _ = controller_pairs[0]
+        primary_pad = controllers[0]
         chosen_profile_name = args.profile or primary_pad.device_type
 
         # Interactive Dual Joy-Con Pairing Detection
-        if len(controller_pairs) >= 2 and not args.profile:
-            has_left = any(p.device_type == "left_joycon" for p, _ in controller_pairs)
-            has_right = any(p.device_type == "right_joycon" for p, _ in controller_pairs)
+        if len(controllers) >= 2 and not args.profile:
+            has_left = any(p.device_type == "left_joycon" for p in controllers)
+            has_right = any(p.device_type == "right_joycon" for p in controllers)
             if has_left and has_right:
                 print("\n[Pairing Prompt] Detected both Left and Right Joy-Cons connected!")
                 try:
@@ -871,20 +738,16 @@ def main() -> int:
 
         active_profile = get_device_profile(chosen_profile_name)
 
-        if args.horizontal:
-            active_profile.motion.vertical_orientation = False
         if args.sensitivity != 1.0:
-            active_profile.motion.sensitivity_x *= args.sensitivity
-            active_profile.motion.sensitivity_y *= args.sensitivity
             active_profile.joystick.speed_x *= args.sensitivity
             active_profile.joystick.speed_y *= args.sensitivity
 
         try:
             run_controller_session(
-                pads=controller_pairs,
+                pads=controllers,
                 profile=active_profile,
                 security_mgr=security_mgr,
-                verbose=args.verbose,
+                logger=logger,
                 exclusive_grab=not args.no_grab
             )
         except KeyboardInterrupt:

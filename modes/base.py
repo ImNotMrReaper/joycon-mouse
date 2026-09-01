@@ -72,7 +72,6 @@ class BaseMode:
     """Base class for all modular controller modes."""
     name: str = "BASE MODE"
     description: str = "Base controller mode"
-    enable_motion: bool = True
     enable_joystick_cursor: bool = True
     enable_media_seek: bool = False
 

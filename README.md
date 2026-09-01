@@ -1,13 +1,16 @@
 # Joy-Con Mouse & Universal Media Remote for Linux
 
-A zero-dependency, high-performance pure Python driver that transforms Nintendo Switch Joy-Cons and multi-gamepad controllers into an **Air-Mouse (Motion Pointer)**, **Desktop Trackpad**, and **Universal Media Remote** on Linux (Wayland & X11) using native kernel `uinput` and `evdev` ioctls.
+A zero-dependency, high-performance pure Python driver that transforms Nintendo Switch Joy-Cons and multi-gamepad controllers into a **Precision Desktop Mouse**, **Trackpad**, and **Universal Media Remote** on Linux (Wayland & X11) using native kernel `uinput` and `evdev` ioctls.
 
 ---
 
 ## 🌟 Key Features
 
-- **Zero External Dependencies**: Built entirely on standard Python 3.12+ libraries (`fcntl`, `struct`, `select`, `math`, `os`). No pip dependencies or third-party wrappers required.
-- **Drag-and-Drop Modular Plugin Architecture**: Drop new mode files into the [`modes/`](modes/) directory to automatically add them into the controller runtime rotation.
+- **Zero External Dependencies**: Pure Python using standard library (`fcntl`, `struct`, `select`, `math`, `os`). No pip dependencies or third-party wrappers required.
+- **Precision Analog Stick Mouse**: Silky-smooth desktop cursor navigation with power acceleration curves, radial deadzones, and zero sensor drift.
+- **Real-Time Button & Axis Diagnostic Tool**: Built-in interactive tester (`--test-buttons`) that displays live button presses, hex codes, mode bindings, and analog stick deflection gauges.
+- **Structured Logging**: Built-in logger supporting live `--debug` console output and persistent `--log-file` recording.
+- **Drag-and-Drop Modular Plugin Architecture**: Drop custom mode `.py` files into the [`modes/`](modes/) directory to automatically add them into the runtime rotation.
 - **Auto-Dormant Game Detection**: Automatically yields exclusive controller grabbing (`EVIOCGRAB`) when Steam games or emulators launch (e.g., RetroArch, RPCS3, Dolphin, PCSX2, Heroic, Lutris) and reclaims control seamlessly upon exit.
 - **Hardware-Accurate Joy-Con Mappings**: Full support for upstream Linux `hid-nintendo` side-rail button quirks (SL/SR opposite-side trigger repurposing and fallbacks).
 - **Dual Joy-Con Pairing**: Detects simultaneously connected Left and Right Joy-Cons and prompts to bind them into a single unified desktop controller.
@@ -24,13 +27,14 @@ A zero-dependency, high-performance pure Python driver that transforms Nintendo 
 ```text
 joycon-mouse/
 ├── .gitignore                     # Excludes credentials, caches, and local virtualenvs
-├── README.md                      # Public open-source documentation
+├── README.md                      # Public documentation
 ├── joycon-mouse.py                # Main polling loop, auto-dormant manager, device grabber
+├── test_buttons.py                # Interactive live button and stick diagnostic tool
 ├── security_manager.py.example    # Open-source template for security features
 └── modes/                         # Modular plugin directory (Drag-and-Drop)
     ├── __init__.py                # Dynamic plugin auto-loader (discovers BaseMode subclasses)
     ├── base.py                    # BaseMode base class & Linux keycode constants
-    ├── air_mouse.py               # Mode 1: Wii Air-Mouse, gyro pointer & desktop controls
+    ├── air_mouse.py               # Mode 1: Precision Desktop Mouse & browser controls
     └── media_remote.py            # Mode 2: Universal media remote with side-rail volume
 ```
 
@@ -68,24 +72,22 @@ Launch the driver:
 python3 joycon-mouse.py
 ```
 
-### 3. Command Line Options
+Launch with debug logging:
 
-```text
-usage: joycon-mouse [-h] [-l] [-p {right_joycon,left_joycon,dual_joycon,switch_pro,playstation,xbox,generic_gamepad}]
-                    [-s SENSITIVITY] [--set-code] [--horizontal] [--no-grab] [-v] [--no-reconnect]
+```bash
+python3 joycon-mouse.py --debug --log-file joycon-mouse.log
+```
 
-Nintendo Switch Joy-Con & Multi-Gamepad Air-Mouse, Media Remote, and Secure Unlock Driver for Linux.
+---
 
-options:
-  -h, --help            show this help message and exit
-  -l, --list            List detected controllers and exit.
-  -p, --profile         Force specific device profile.
-  -s, --sensitivity     Pointer sensitivity multiplier (e.g. 1.2 or 0.8).
-  --set-code            Launch interactive wizard to record unlock cheat-code.
-  --horizontal          Use horizontal grip orientation.
-  --no-grab             Disable exclusive device grabbing (EVIOCGRAB).
-  -v, --verbose         Print debug events and unmapped scan codes.
-  --no-reconnect        Do not wait and auto-reconnect on disconnect.
+## 🎮 Live Button & Stick Diagnostic Tool
+
+Run the interactive button tester to inspect real-time raw scancodes, values, and mapped mode actions:
+
+```bash
+python3 test_buttons.py
+# or
+python3 joycon-mouse.py --test-buttons
 ```
 
 ---
@@ -102,14 +104,13 @@ from typing import Any, Dict
 from modes.base import (
     BaseMode,
     KEY_PAGEUP, KEY_PAGEDOWN, KEY_F11, KEY_ESC,
-    PAD_BTN_EAST, PAD_BTN_WEST, PAD_BTN_NORTH, PAD_BTN_SOUTH,
+    PAD_BTN_EAST, PAD_BTN_SOUTH, PAD_BTN_NORTH, PAD_BTN_WEST,
     PAD_BTN_PLUS, PAD_BTN_MINUS, PAD_BTN_HOME, PAD_BTN_CAPTURE
 )
 
 class PresentationMode(BaseMode):
     name = "PRESENTATION CLICKER"
     description = "Slide navigation for PowerPoint, Google Slides, and PDF presentations."
-    enable_motion = False
     enable_joystick_cursor = True
     enable_media_seek = False
 
@@ -132,7 +133,7 @@ class PresentationMode(BaseMode):
 
 ## 🎮 Controller Layouts
 
-### Mode 1: Wii Air-Mouse (Default)
+### Mode 1: Desktop Mouse (Default)
 | Button | Right Joy-Con | Left Joy-Con | Action |
 | :--- | :--- | :--- | :--- |
 | **Trigger** | `ZR` | `ZL` | Left Mouse Click |
@@ -144,7 +145,7 @@ class PresentationMode(BaseMode):
 | **Face Left** | `Y` | `Left` | Browser Back |
 | **Face Right** | `A` | `Right` | Browser Forward |
 | **Stick Click** | `R3` | `L3` | Middle Mouse Click |
-| **Home / Capture** | `Home` | `Capture` | Tap: Super / Win \| Hold: Screenshot |
+| **Home / Capture** | `Home` | `Capture` | Tap: Super / Win | Hold: Screenshot |
 | **Plus / Minus** | `+` | `-` | Cycle Next Mode |
 
 ### Mode 2: Universal Media Remote

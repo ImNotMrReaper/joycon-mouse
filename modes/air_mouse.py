@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # noinspection SpellCheckingInspection,PyUnusedLocal,PyBroadException
 """
-Mode: Wii Air-Mouse & Desktop Pointer.
+Mode: Desktop Mouse & Browser Controller.
 Location: modes/air_mouse.py
 """
 
@@ -20,9 +20,8 @@ from modes.base import (
 
 
 class AirMouseMode(BaseMode):
-    name = "WII AIR-MOUSE (Motion Pointer & Desktop)"
-    description = "Gyro motion pointer with desktop mouse, scroll, and browser navigation."
-    enable_motion = True
+    name = "DESKTOP MOUSE (Precision Stick Pointer)"
+    description = "Smooth analog stick cursor with acceleration curves, scroll, and browser navigation."
     enable_joystick_cursor = True
     enable_media_seek = False
 

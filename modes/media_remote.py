@@ -22,7 +22,6 @@ from modes.base import (
 class MediaRemoteMode(BaseMode):
     name = "UNIVERSAL MEDIA REMOTE"
     description = "Controls Spotify, YouTube, VLC, Netflix, browsers, and all Linux media players."
-    enable_motion = False
     enable_joystick_cursor = False
     enable_media_seek = True
 
