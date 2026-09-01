@@ -1,0 +1,19 @@
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Python cache & logs
+__pycache__/
+*.pyc
+*.log
+
+# Personal security & credentials
+security_config.json
+security_manager.py
+*.hash
+
+# IDE & OS files
+.idea/
+.vscode/
+.DS_Store

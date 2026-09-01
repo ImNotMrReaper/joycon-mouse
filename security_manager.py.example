@@ -1,0 +1,28 @@
+# Copy this file to security_manager.py to enable local password/sudo injection features.
+# Personal security files are strictly ignored by .gitignore to prevent leaking credentials.
+
+import base64
+import getpass
+import hashlib
+import json
+import os
+import select
+import struct
+import time
+from typing import Any, Dict, List, Optional
+
+class SecurityManager:
+    """Template for local encrypted cheat-code and sudo/lockscreen injector."""
+    def __init__(self, config_dir: Optional[str] = None):
+        self.config_dir = config_dir or os.path.expanduser("~/.config/joycon-mouse")
+        self.config_path = os.path.join(self.config_dir, "security_config.json")
+        self.config: Dict[str, Any] = {}
+
+    def has_code(self, profile_name: str) -> bool:
+        return False
+
+    def process_key_event(self, code: int, device_type: str, uinput: Any) -> bool:
+        return False
+
+    def record_code_interactive(self, fd: int, profile_name: str, display_name: str) -> None:
+        pass
