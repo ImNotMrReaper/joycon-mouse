@@ -9,6 +9,7 @@ Location: joycon-mouse.py
 import argparse
 import fcntl
 import glob
+import json
 import math
 import os
 import select
@@ -35,6 +36,7 @@ EVENT_SYN = 0x00
 EVENT_KEY = 0x01
 EVENT_REL = 0x02
 EVENT_ABS = 0x03
+EVENT_FF = 0x15
 SYN_REPORT = 0
 
 AXIS_REL_X = 0x00
@@ -74,6 +76,8 @@ def eviocgname(length: int = 256) -> int:
 
 
 EVIOCGRAB = ioctl_write("E", 0x90, 4)
+EVIOCSFF = ioctl_write("E", 0x80, 48)
+EVIOCRMFF = ioctl_write("E", 0x81, 4)
 
 UI_SET_EVBIT = ioctl_write("U", 100, 4)
 UI_SET_KEYBIT = ioctl_write("U", 101, 4)
@@ -85,6 +89,45 @@ UI_DEV_SETUP = ioctl_write("U", 3, 92)
 IS_64_BIT = struct.calcsize("P") == 8
 EVENT_STRUCT_FORMAT = "llHHi" if IS_64_BIT else "iiHHi"
 EVENT_STRUCT_SIZE = struct.calcsize(EVENT_STRUCT_FORMAT)
+
+
+class ConfigManager:
+    """Manages user configuration in ~/.config/joycon-mouse/config.json."""
+
+    DEFAULT_CONFIG = {
+        "sensitivity": 1.0,
+        "speed_x": 36.0,
+        "speed_y": 36.0,
+        "dead_zone": 0.08,
+        "accel_exponent": 1.6,
+        "rumble_enabled": True,
+        "auto_dormant_enabled": True,
+        "scroll_repeat_ms": 70
+    }
+
+    def __init__(self, config_dir: Optional[str] = None):
+        self.config_dir = config_dir or os.path.expanduser("~/.config/joycon-mouse")
+        self.config_file = os.path.join(self.config_dir, "config.json")
+        self.config = self.load_config()
+
+    def load_config(self) -> Dict[str, Any]:
+        cfg = dict(self.DEFAULT_CONFIG)
+        if os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, "r", encoding="utf-8") as f:
+                    user_cfg = json.load(f)
+                    if isinstance(user_cfg, dict):
+                        cfg.update(user_cfg)
+            except Exception as e:
+                print(f"[Config Warning] Could not read {self.config_file}: {e}")
+        else:
+            try:
+                os.makedirs(self.config_dir, exist_ok=True)
+                with open(self.config_file, "w", encoding="utf-8") as f:
+                    json.dump(cfg, f, indent=4)
+            except Exception:
+                pass
+        return cfg
 
 
 class DriverLogger:
@@ -117,12 +160,14 @@ class DriverLogger:
 class BackgroundGameDetector:
     """Asynchronous background game detector to prevent polling loop lag."""
 
-    def __init__(self, check_interval: float = 2.0):
+    def __init__(self, enabled: bool = True, check_interval: float = 2.0):
+        self.enabled = enabled
         self.check_interval = check_interval
         self.active_game: Optional[str] = None
         self._running = True
-        self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
-        self._thread.start()
+        if self.enabled:
+            self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
+            self._thread.start()
 
     def _monitor_loop(self) -> None:
         while self._running:
@@ -141,6 +186,53 @@ class BackgroundGameDetector:
 
     def stop(self) -> None:
         self._running = False
+
+
+class RumbleManager:
+    """Controls physical haptic feedback (EV_FF) on connected Joy-Cons & gamepads."""
+
+    def __init__(self, enabled: bool = True):
+        self.enabled = enabled
+        self.open_descriptors: List[int] = []
+
+    def set_descriptors(self, fds: List[int]) -> None:
+        self.open_descriptors = fds
+
+    def _pulse_thread(self, fds: List[int], duration_ms: int, strong: int, weak: int, count: int, interval_ms: int) -> None:
+        for _ in range(count):
+            for fd in fds:
+                try:
+                    ff_struct = struct.pack("HhHHHHHHH30x", 0x50, -1, 0, 0, 0, duration_ms, 0, strong, weak)
+                    buf = bytearray(ff_struct)
+                    fcntl.ioctl(fd, EVIOCSFF, buf)
+                    effect_id = struct.unpack("Hh", buf[:4])[1]
+                    play_event = struct.pack(EVENT_STRUCT_FORMAT, 0, 0, EVENT_FF, effect_id, 1)
+                    os.write(fd, play_event)
+                    time.sleep(duration_ms / 1000.0)
+                    fcntl.ioctl(fd, EVIOCRMFF, effect_id)
+                except Exception:
+                    pass
+            if count > 1:
+                time.sleep(interval_ms / 1000.0)
+
+    def pulse(self, duration_ms: int = 50, strong: int = 0x6000, weak: int = 0x6000, count: int = 1, interval_ms: int = 60) -> None:
+        if not self.enabled or not self.open_descriptors:
+            return
+        t = threading.Thread(
+            target=self._pulse_thread,
+            args=(list(self.open_descriptors), duration_ms, strong, weak, count, interval_ms),
+            daemon=True
+        )
+        t.start()
+
+    def mode_switch(self) -> None:
+        self.pulse(duration_ms=45, strong=0x5000, weak=0x5000, count=1)
+
+    def screenshot(self) -> None:
+        self.pulse(duration_ms=40, strong=0x7000, weak=0x7000, count=2, interval_ms=50)
+
+    def unlock_success(self) -> None:
+        self.pulse(duration_ms=80, strong=0x8000, weak=0x8000, count=1)
 
 
 @dataclass
@@ -162,7 +254,7 @@ class DeviceProfile:
     scroll_repeat_ms: int = 70
 
 
-def get_device_profile(profile_name: str) -> DeviceProfile:
+def get_device_profile(profile_name: str, config: Dict[str, Any]) -> DeviceProfile:
     titles = {
         "right_joycon": "Nintendo Switch Right Joy-Con (Desktop Controller)",
         "left_joycon": "Nintendo Switch Left Joy-Con (Desktop Controller)",
@@ -175,7 +267,14 @@ def get_device_profile(profile_name: str) -> DeviceProfile:
     return DeviceProfile(
         name=profile_name,
         description=titles.get(profile_name, "Gamepad Controller"),
-        joystick=JoystickSettings(enabled=True, speed_x=36.0, speed_y=36.0, dead_zone=0.08)
+        joystick=JoystickSettings(
+            enabled=True,
+            speed_x=float(config.get("speed_x", 36.0)),
+            speed_y=float(config.get("speed_y", 36.0)),
+            dead_zone=float(config.get("dead_zone", 0.08)),
+            accel_exponent=float(config.get("accel_exponent", 1.6))
+        ),
+        scroll_repeat_ms=int(config.get("scroll_repeat_ms", 70))
     )
 
 
@@ -193,18 +292,18 @@ class VirtualMouseDevice:
         for path in candidate_paths:
             if os.path.exists(path):
                 try:
-                    self.file_descriptor = os.open(path, os.O_WRONLY | os.O_NONBLOCK)
+                    self.file_descriptor = os.open(path, os.O_RDWR | os.O_NONBLOCK)
                     break
                 except PermissionError:
                     raise PermissionError(
-                        f"Cannot open {path}. Ensure user is in the 'input' group: sudo usermod -aG input $USER"
+                        f"Cannot open {path}. Ensure user is in the input group: sudo usermod -aG input $USER"
                     )
                 except OSError:
                     continue
 
         if self.file_descriptor is None:
             raise FileNotFoundError(
-                "Neither /dev/uinput nor /dev/input/uinput is accessible. Ensure 'uinput' module is loaded: sudo modprobe uinput"
+                "Neither /dev/uinput nor /dev/input/uinput is accessible. Ensure uinput module is loaded: sudo modprobe uinput"
             )
 
         fcntl.ioctl(self.file_descriptor, UI_SET_EVBIT, EVENT_SYN)
@@ -348,7 +447,6 @@ class JoystickFilter:
             return 0, 0
 
         effective_magnitude = min(1.0, (magnitude - self.config.dead_zone) / (1.0 - self.config.dead_zone))
-        # Responsive hybrid curve: crisp micro-targeting with fast cross-screen zoom
         curve = 0.25 * effective_magnitude + 0.75 * math.pow(effective_magnitude, self.config.accel_exponent)
         direction_x = stick_x / magnitude
         direction_y = stick_y / magnitude
@@ -435,16 +533,18 @@ def run_controller_session(
     profile: DeviceProfile,
     security_mgr: Optional[Any] = None,
     logger: Optional[DriverLogger] = None,
+    rumble: Optional[RumbleManager] = None,
+    auto_dormant: bool = True,
     exclusive_grab: bool = True
 ) -> None:
-    """Runs event polling with auto-dormant detection and dynamic mode execution."""
+    """Runs event polling with auto-dormant detection, haptics, and dynamic mode execution."""
     active_modes = load_all_modes()
     if not active_modes:
         print("[Error] No modes found in modes/ directory. Ensure mode files exist.")
         return
 
     log = logger or DriverLogger()
-    game_detector = BackgroundGameDetector(check_interval=2.0)
+    game_detector = BackgroundGameDetector(enabled=auto_dormant, check_interval=2.0)
     uinput = VirtualMouseDevice(device_name=f"{profile.description} (Virtual Device)")
     open_descriptors: Dict[int, ControllerNode] = {}
     poll_object = select.poll()
@@ -452,7 +552,7 @@ def run_controller_session(
 
     for pad_node in pads:
         try:
-            pad_fd = os.open(pad_node.path, os.O_RDONLY | os.O_NONBLOCK)
+            pad_fd = os.open(pad_node.path, os.O_RDWR | os.O_NONBLOCK)
             if exclusive_grab:
                 try:
                     fcntl.ioctl(pad_fd, EVIOCGRAB, 1)
@@ -467,6 +567,10 @@ def run_controller_session(
     if not open_descriptors:
         game_detector.stop()
         return
+
+    if rumble:
+        rumble.set_descriptors(list(open_descriptors.keys()))
+        rumble.pulse(duration_ms=60, strong=0x5000, weak=0x5000)
 
     mode_index = 0
     total_modes = len(active_modes)
@@ -517,7 +621,7 @@ def run_controller_session(
 
         for desc in sorted(unique_actions):
             print(f"  * {desc}")
-        print("\nTip: Press + or - to cycle active mode.")
+        print("\nTip: Press + or - to cycle active mode (with haptic vibration click).")
         print("Tip: Tap Home/Capture for Super (Windows Key) | Hold >= 0.4s for Screenshot.")
         print("Tip: Auto-Dormant enabled (Releases controller automatically when games launch).")
         print("=" * 65 + "\n")
@@ -549,7 +653,6 @@ def run_controller_session(
             delta_time = now_time - last_tick_timestamp
             last_tick_timestamp = now_time
 
-            # Clamp delta_time to prevent sudden cursor jumps
             if delta_time > 0.05:
                 delta_time = 0.016
             elif delta_time <= 0.0:
@@ -578,6 +681,8 @@ def run_controller_session(
                         if event_type == EVENT_KEY:
                             if value == 1 and security_mgr:
                                 if security_mgr.process_key_event(code, node_info.device_type, uinput):
+                                    if rumble:
+                                        rumble.unlock_success()
                                     continue
 
                             active_mode = get_current_mode()
@@ -593,6 +698,8 @@ def run_controller_session(
 
                                 if action_type == "mode_cycle" and value == 1:
                                     mode_index = (mode_index + 1) % total_modes
+                                    if rumble:
+                                        rumble.mode_switch()
                                     log.log(f"Switched mode to [{get_current_mode().name}]", level="INFO")
                                     print_status_banner()
 
@@ -632,6 +739,8 @@ def run_controller_session(
                 if (now_time - smart_press_timestamp) >= hold_threshold_sec:
                     uinput.tap_key(KEY_CODE_SYSRQ)
                     smart_hold_triggered = True
+                    if rumble:
+                        rumble.screenshot()
                     log.log("[Smart Button] Held -> Screenshot (PrintScreen)", level="INFO")
 
             active_mode = get_current_mode()
@@ -676,6 +785,57 @@ def run_controller_session(
         uinput.close()
 
 
+def install_systemd_service() -> int:
+    """Installs and enables the systemd user background service."""
+    service_dir = os.path.expanduser("~/.config/systemd/user")
+    service_file = os.path.join(service_dir, "joycon-mouse.service")
+    bin_path = "/usr/local/bin/joycon-mouse"
+    if not os.path.exists(bin_path):
+        bin_path = sys.executable + " " + os.path.abspath(__file__)
+
+    service_content = f"""[Unit]
+Description=Joy-Con Mouse & Universal Remote Background Driver
+After=bluetooth.target
+
+[Service]
+ExecStart={bin_path}
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+"""
+    try:
+        os.makedirs(service_dir, exist_ok=True)
+        with open(service_file, "w", encoding="utf-8") as f:
+            f.write(service_content)
+
+        subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+        subprocess.run(["systemctl", "--user", "enable", "--now", "joycon-mouse.service"], check=True)
+        print(f"\n[SUCCESS] Installed and started background service: {service_file}")
+        print("Driver is now running automatically in the background on startup!")
+        print("To view live logs: journalctl --user -u joycon-mouse.service -f\n")
+        return 0
+    except Exception as e:
+        print(f"[Error] Failed to install systemd service: {e}")
+        return 1
+
+
+def uninstall_systemd_service() -> int:
+    """Disables and removes the systemd user background service."""
+    service_file = os.path.expanduser("~/.config/systemd/user/joycon-mouse.service")
+    try:
+        subprocess.run(["systemctl", "--user", "disable", "--now", "joycon-mouse.service"], check=False)
+        if os.path.exists(service_file):
+            os.remove(service_file)
+        subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
+        print(f"\n[SUCCESS] Uninstalled background service: {service_file}\n")
+        return 0
+    except Exception as e:
+        print(f"[Error] Failed to uninstall systemd service: {e}")
+        return 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="joycon-mouse",
@@ -685,20 +845,38 @@ def main() -> int:
     parser.add_argument("-p", "--profile", type=str, default=None,
                         choices=["right_joycon", "left_joycon", "dual_joycon", "switch_pro", "playstation", "xbox", "generic_gamepad"],
                         help="Force specific profile.")
-    parser.add_argument("-s", "--sensitivity", type=float, default=1.0, help="Pointer sensitivity multiplier (e.g. 1.2 or 0.8).")
+    parser.add_argument("-s", "--sensitivity", type=float, default=None, help="Pointer sensitivity multiplier (e.g. 1.2 or 0.8).")
     parser.add_argument("--set-code", action="store_true", help="Launch interactive wizard to set or change cheat-code.")
     parser.add_argument("--test-buttons", action="store_true", help="Launch real-time interactive button and stick diagnostic tool.")
+    parser.add_argument("--install-service", action="store_true", help="Install & start automatic background startup service.")
+    parser.add_argument("--uninstall-service", action="store_true", help="Uninstall background startup service.")
     parser.add_argument("--log-file", type=str, default=None, help="Save driver logs to a specified file.")
+    parser.add_argument("--no-rumble", action="store_true", help="Disable physical haptic vibration feedback.")
     parser.add_argument("--no-grab", action="store_true", help="Disable exclusive device grabbing (not recommended with Steam).")
     parser.add_argument("-v", "--verbose", "--debug", dest="debug", action="store_true", help="Print real-time debug events.")
     parser.add_argument("--no-reconnect", action="store_true", help="Do not wait and auto-reconnect on disconnect.")
     args = parser.parse_args()
 
+    if args.install_service:
+        return install_systemd_service()
+
+    if args.uninstall_service:
+        return uninstall_systemd_service()
+
     if args.test_buttons:
         from test_buttons import main as test_main
         return test_main()
 
+    config_mgr = ConfigManager()
+    cfg = config_mgr.config
+
+    if args.sensitivity is not None:
+        cfg["sensitivity"] = args.sensitivity
+    if args.no_rumble:
+        cfg["rumble_enabled"] = False
+
     logger = DriverLogger(debug=args.debug, log_file=args.log_file)
+    rumble = RumbleManager(enabled=bool(cfg.get("rumble_enabled", True)))
     security_mgr = SecurityManager() if SecurityManager is not None else None
 
     if args.list:
@@ -757,11 +935,12 @@ def main() -> int:
             except OSError as err:
                 print(f"[Warning] Could not access controller for cheat-code recording: {err}")
 
-        active_profile = get_device_profile(chosen_profile_name)
+        active_profile = get_device_profile(chosen_profile_name, cfg)
 
-        if args.sensitivity != 1.0:
-            active_profile.joystick.speed_x *= args.sensitivity
-            active_profile.joystick.speed_y *= args.sensitivity
+        sens_multiplier = float(cfg.get("sensitivity", 1.0))
+        if sens_multiplier != 1.0:
+            active_profile.joystick.speed_x *= sens_multiplier
+            active_profile.joystick.speed_y *= sens_multiplier
 
         try:
             run_controller_session(
@@ -769,6 +948,8 @@ def main() -> int:
                 profile=active_profile,
                 security_mgr=security_mgr,
                 logger=logger,
+                rumble=rumble,
+                auto_dormant=bool(cfg.get("auto_dormant_enabled", True)),
                 exclusive_grab=not args.no_grab
             )
         except KeyboardInterrupt:

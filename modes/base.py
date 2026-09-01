@@ -11,13 +11,17 @@ from typing import Any, Dict
 KEY_ESC = 1
 KEY_BACKSPACE = 14
 KEY_TAB = 15
+KEY_W = 17
 KEY_ENTER = 28
 KEY_LEFTCTRL = 29
 KEY_C = 46                 # Closed Captions / Subtitles
+KEY_B = 48                 # Blank / Black Screen
 KEY_F = 33                 # Fullscreen
 KEY_LEFTSHIFT = 42
 KEY_LEFTALT = 56
 KEY_SPACE = 57
+KEY_F4 = 62
+KEY_F5 = 63                # Presentation Slideshow Start
 KEY_F11 = 87
 KEY_SYSRQ = 99             # PrintScreen
 KEY_UP = 103
