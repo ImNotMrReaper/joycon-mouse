@@ -507,8 +507,11 @@ def discover_input_devices() -> List[Tuple[ControllerNode, Optional[ControllerNo
         for imu in imus:
             if imu.path in used_imu_paths:
                 continue
-            if ("right" in pad.name.lower() and "right" in imu.name.lower()) or \
+            if pad.device_type == imu.device_type or \
+               ("right" in pad.name.lower() and "right" in imu.name.lower()) or \
                ("left" in pad.name.lower() and "left" in imu.name.lower()) or \
+               ("(r)" in pad.name.lower() and "(r)" in imu.name.lower()) or \
+               ("(l)" in pad.name.lower() and "(l)" in imu.name.lower()) or \
                ("pro controller" in pad.name.lower() and "pro controller" in imu.name.lower()) or \
                ("dualsense" in pad.name.lower() and "dualsense" in imu.name.lower()):
                 matched_imu = imu
