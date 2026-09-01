@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # noinspection SpellCheckingInspection,PyUnusedLocal,PyBroadException
 """
-Nintendo Switch Joy-Con & Multi-Gamepad Desktop Driver for Linux.
+Nintendo Switch Joy-Con & Multi-Gamepad Ultra-Low Latency Desktop Driver for Linux.
 Zero-dependency, pure Python Linux kernel interface using fcntl, struct, select, and uinput.
 Location: joycon-mouse.py
 """
@@ -15,6 +15,7 @@ import select
 import struct
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -53,10 +54,7 @@ MOUSE_BTN_MIDDLE = 0x112
 MOUSE_BTN_BACK = 0x113
 MOUSE_BTN_FORWARD = 0x114
 
-GAME_PROCESS_TARGETS = [
-    "steamapps", "steam_app", "retroarch", "rpcs3", "dolphin-emu",
-    "yuzu", "ryujinx", "pcsx2", "cemu", "heroic", "lutris"
-]
+GAME_PROCESS_PATTERN = "steamapps|steam_app|retroarch|rpcs3|dolphin-emu|yuzu|ryujinx|pcsx2|cemu|heroic|lutris"
 
 
 def ioctl_code(direction: int, type_char: str, number: int, size: int) -> int:
@@ -116,13 +114,42 @@ class DriverLogger:
                 pass
 
 
+class BackgroundGameDetector:
+    """Asynchronous background game detector to prevent polling loop lag."""
+
+    def __init__(self, check_interval: float = 2.0):
+        self.check_interval = check_interval
+        self.active_game: Optional[str] = None
+        self._running = True
+        self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
+        self._thread.start()
+
+    def _monitor_loop(self) -> None:
+        while self._running:
+            try:
+                out = subprocess.check_output(
+                    ["pgrep", "-f", "-E", GAME_PROCESS_PATTERN],
+                    stderr=subprocess.DEVNULL
+                )
+                if out.strip():
+                    self.active_game = "Active Game"
+                else:
+                    self.active_game = None
+            except Exception:
+                self.active_game = None
+            time.sleep(self.check_interval)
+
+    def stop(self) -> None:
+        self._running = False
+
+
 @dataclass
 class JoystickSettings:
     enabled: bool = True
-    speed_x: float = 24.0
-    speed_y: float = 24.0
-    dead_zone: float = 0.12
-    accel_exponent: float = 2.0
+    speed_x: float = 36.0
+    speed_y: float = 36.0
+    dead_zone: float = 0.08
+    accel_exponent: float = 1.6
     invert_x: bool = False
     invert_y: bool = False
 
@@ -132,19 +159,7 @@ class DeviceProfile:
     name: str
     description: str
     joystick: JoystickSettings = field(default_factory=JoystickSettings)
-    scroll_repeat_ms: int = 80
-
-
-def is_game_active() -> Optional[str]:
-    """Checks if a game or emulator is currently running."""
-    for proc in GAME_PROCESS_TARGETS:
-        try:
-            out = subprocess.check_output(["pgrep", "-f", proc], stderr=subprocess.DEVNULL)
-            if out.strip():
-                return proc
-        except Exception:
-            pass
-    return None
+    scroll_repeat_ms: int = 70
 
 
 def get_device_profile(profile_name: str) -> DeviceProfile:
@@ -160,7 +175,7 @@ def get_device_profile(profile_name: str) -> DeviceProfile:
     return DeviceProfile(
         name=profile_name,
         description=titles.get(profile_name, "Gamepad Controller"),
-        joystick=JoystickSettings(enabled=True, speed_x=25.0, speed_y=25.0, dead_zone=0.12)
+        joystick=JoystickSettings(enabled=True, speed_x=36.0, speed_y=36.0, dead_zone=0.08)
     )
 
 
@@ -305,7 +320,7 @@ class VirtualMouseDevice:
 
 
 class JoystickFilter:
-    """Processes analog stick deflection with radial deadzone and acceleration curves."""
+    """Processes analog stick deflection with responsive hybrid acceleration curves."""
 
     def __init__(self, config: JoystickSettings):
         self.config = config
@@ -333,7 +348,8 @@ class JoystickFilter:
             return 0, 0
 
         effective_magnitude = min(1.0, (magnitude - self.config.dead_zone) / (1.0 - self.config.dead_zone))
-        curve = math.pow(effective_magnitude, self.config.accel_exponent)
+        # Responsive hybrid curve: crisp micro-targeting with fast cross-screen zoom
+        curve = 0.25 * effective_magnitude + 0.75 * math.pow(effective_magnitude, self.config.accel_exponent)
         direction_x = stick_x / magnitude
         direction_y = stick_y / magnitude
 
@@ -424,10 +440,11 @@ def run_controller_session(
     """Runs event polling with auto-dormant detection and dynamic mode execution."""
     active_modes = load_all_modes()
     if not active_modes:
-        print("[Error] No modes found in 'modes/' directory. Ensure mode files exist.")
+        print("[Error] No modes found in modes/ directory. Ensure mode files exist.")
         return
 
     log = logger or DriverLogger()
+    game_detector = BackgroundGameDetector(check_interval=2.0)
     uinput = VirtualMouseDevice(device_name=f"{profile.description} (Virtual Device)")
     open_descriptors: Dict[int, ControllerNode] = {}
     poll_object = select.poll()
@@ -448,15 +465,15 @@ def run_controller_session(
             continue
 
     if not open_descriptors:
+        game_detector.stop()
         return
 
     mode_index = 0
     total_modes = len(active_modes)
     active_scroll_direction = 0
     last_scroll_timestamp = 0.0
-    last_tick_timestamp = time.time()
     last_media_seek_timestamp = 0.0
-    last_game_check_time = time.time()
+    last_tick_timestamp = time.perf_counter()
 
     is_dormant = False
     smart_press_timestamp: Optional[float] = None
@@ -509,28 +526,34 @@ def run_controller_session(
 
     try:
         while True:
-            now_time = time.time()
-
-            # Auto-Dormant check every 2 seconds
-            if (now_time - last_game_check_time) > 2.0:
-                last_game_check_time = now_time
-                active_game = is_game_active()
-
-                if active_game and not is_dormant:
-                    is_dormant = True
-                    set_grab_state(False)
-                    log.log(f"Game detected ({active_game}). Controller released to game.", level="INFO")
-                elif not active_game and is_dormant:
-                    is_dormant = False
-                    set_grab_state(True)
-                    log.log("Game exited. Resuming Joy-Con desktop control.", level="INFO")
-                    print_status_banner()
+            # Check game state from background thread with 0 latency
+            active_game = game_detector.active_game
+            if active_game and not is_dormant:
+                is_dormant = True
+                set_grab_state(False)
+                log.log(f"Game detected ({active_game}). Controller released to game.", level="INFO")
+            elif not active_game and is_dormant:
+                is_dormant = False
+                set_grab_state(True)
+                log.log("Game exited. Resuming Joy-Con desktop control.", level="INFO")
+                print_status_banner()
 
             if is_dormant:
                 time.sleep(0.1)
+                last_tick_timestamp = time.perf_counter()
                 continue
 
-            poll_events = poll_object.poll(8)
+            # High-performance 250Hz polling (4ms timeout)
+            poll_events = poll_object.poll(4)
+            now_time = time.perf_counter()
+            delta_time = now_time - last_tick_timestamp
+            last_tick_timestamp = now_time
+
+            # Clamp delta_time to prevent sudden cursor jumps
+            if delta_time > 0.05:
+                delta_time = 0.016
+            elif delta_time <= 0.0:
+                delta_time = 0.004
 
             for descriptor, mask in poll_events:
                 if mask & (select.POLLERR | select.POLLHUP):
@@ -575,7 +598,7 @@ def run_controller_session(
 
                                 elif action_type == "smart_home":
                                     if value == 1:
-                                        smart_press_timestamp = time.time()
+                                        smart_press_timestamp = time.perf_counter()
                                         smart_hold_triggered = False
                                     elif value == 0:
                                         if smart_press_timestamp is not None and not smart_hold_triggered:
@@ -595,7 +618,7 @@ def run_controller_session(
                                     if value == 1:
                                         active_scroll_direction = action_config.get("param", 0)
                                         uinput.emit_scroll(active_scroll_direction)
-                                        last_scroll_timestamp = time.time()
+                                        last_scroll_timestamp = time.perf_counter()
                                     elif value == 0 and active_scroll_direction == action_config.get("param", 0):
                                         active_scroll_direction = 0
 
@@ -604,9 +627,6 @@ def run_controller_session(
                                 j_filter = joystick_filters.get(node_info.path)
                                 if j_filter is not None:
                                     j_filter.update_axis(code, value)
-
-            delta_time = now_time - last_tick_timestamp
-            last_tick_timestamp = now_time
 
             if smart_press_timestamp is not None and not smart_hold_triggered:
                 if (now_time - smart_press_timestamp) >= hold_threshold_sec:
@@ -645,6 +665,7 @@ def run_controller_session(
                             log.log("[Media Seek] Rewind -5s", level="INFO")
 
     finally:
+        game_detector.stop()
         for fd in open_descriptors.keys():
             try:
                 if exclusive_grab:
@@ -658,7 +679,7 @@ def run_controller_session(
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="joycon-mouse",
-        description="Nintendo Switch Joy-Con & Multi-Gamepad Desktop Driver for Linux."
+        description="Nintendo Switch Joy-Con & Multi-Gamepad Ultra-Low Latency Desktop Driver for Linux."
     )
     parser.add_argument("-l", "--list", action="store_true", help="List detected controllers and exit.")
     parser.add_argument("-p", "--profile", type=str, default=None,
