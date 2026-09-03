@@ -1,6 +1,16 @@
-# Joy-Con Mouse & Universal Media Remote for Linux
+<div align="center">
 
-A zero-dependency, high-performance pure Python driver that transforms Nintendo Switch Joy-Cons and multi-gamepad controllers into a **Precision Desktop Mouse**, **Universal Media Remote**, **Window & Workspace Manager**, and **Presentation Clicker** on Linux (Wayland & X11) using native kernel `uinput` and `evdev` ioctls.
+# 🎮 Joy-Con Mouse & Universal Media Remote for Linux
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Platform](https://img.shields.io/badge/platform-Linux%20(Wayland%20%26%20X11)-lightgrey.svg)](https://kernel.org)
+[![Dependencies](https://img.shields.io/badge/dependencies-zero%20external-success.svg)](https://github.com/ImNotMrReaper/joycon-mouse)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+**Transform Nintendo Switch Joy-Cons into a wireless precision desktop mouse, couch media remote, and terminal companion on Linux with zero external dependencies.**
+
+</div>
 
 ---
 
@@ -187,6 +197,15 @@ To use the optional local authentication / sudo injection system:
 
 ---
 
+## 🤝 Contributing
+
+Contributions are warmly welcomed! Joy-Con Mouse was designed from the ground up to be modular and community-friendly. If you want to create a custom controller mode, enhance button mappings, or report hardware quirks:
+- Read the [Contributing Guide](CONTRIBUTING.md) to see how to build a custom plugin in under 15 lines of code.
+- Open an [Issue](https://github.com/ImNotMrReaper/joycon-mouse/issues) for feature requests or gamepad compatibility.
+- Submit a Pull Request to share your mode with other Linux users!
+
+---
+
 ## 📜 License
 
-MIT License. Designed and crafted for Linux enthusiasts.
+Distributed under the [MIT License](LICENSE). Designed and crafted for the Linux and open-source gaming community.
