@@ -167,7 +167,7 @@ class DriverLogger:
             try:
                 os.makedirs(os.path.dirname(os.path.abspath(self.log_file)), exist_ok=True)
                 with open(self.log_file, "a", encoding="utf-8") as f:
-                    f.write(f"\n--- Session Started: {time.strftime("%Y-%m-%d %H:%M:%S")} ---\n")
+                    f.write(f"\n--- Session Started: {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
             except Exception as e:
                 print(f"[Logger Warning] Could not open log file {self.log_file}: {e}")
 

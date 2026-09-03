@@ -187,7 +187,7 @@ def main() -> int:
                             state_str = "🔘 PRESSED " if val == 1 else ("⚪ RELEASED" if val == 0 else f"🔁 REPEAT({val})")
                             btn_name = BUTTON_NAMES.get(code, f"Unknown Button ({code})")
                             
-                            print(f"[{time.strftime("%H:%M:%S")}] {state_str} | Code: {code:3d} (0x{code:03x}) | Name: {btn_name}")
+                            print(f"[{time.strftime('%H:%M:%S')}] {state_str} | Code: {code:3d} (0x{code:03x}) | Name: {btn_name}")
 
                             # Display actions across loaded modes when pressed
                             if val == 1 and modes:
@@ -196,7 +196,7 @@ def main() -> int:
                                     b_map = m.get_button_map(dev_type)
                                     action = b_map.get(code)
                                     if action:
-                                        print(f"     * [{m.name}]: {action.get("desc", "Action: " + str(action))}")
+                                        print(f"     * [{m.name}]: {action.get('desc', 'Action: ' + str(action))}")
                                     else:
                                         print(f"     * [{m.name}]: (Unmapped)")
                                 print()
@@ -208,7 +208,7 @@ def main() -> int:
                                 last_axis_time[code] = now
                                 ax_name = AXIS_NAMES.get(code, f"Axis {code}")
                                 gauge = render_axis_bar(val)
-                                print(f"[{time.strftime("%H:%M:%S")}] 🕹️  AXIS {code:2d} ({ax_name:24s}) | Raw: {val:+6d} {gauge}")
+                                print(f"[{time.strftime('%H:%M:%S')}] 🕹️  AXIS {code:2d} ({ax_name:24s}) | Raw: {val:+6d} {gauge}")
 
     except KeyboardInterrupt:
         print("\nDiagnostic tool exited cleanly.")
