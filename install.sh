@@ -20,12 +20,53 @@ echo -e "  ${BOLD}${PURPLE}🎮 JOY-CON MOUSE INTERACTIVE INSTALLER FOR LINUX${R
 echo -e "  ${DIM}Transform Joy-Cons & Gamepads into a precision mouse & media remote.${RESET}"
 echo -e "================================================================================\n"
 
-# 1. Verify Python 3
-if ! command -v python3 &>/dev/null; then
-    echo -e "${RED}❌ Error: Python 3 is required but was not found on your system.${RESET}"
-    echo -e "   Please install Python 3 with your package manager (e.g. 'sudo apt install python3') and rerun this installer.\n"
-    exit 1
-fi
+# 1. Dependency Resolution
+check_and_install_dependencies() {
+    echo -e "${BOLD}${CYAN}[Step 1/6] Checking system dependencies...${RESET}"
+    
+    local MISSING=()
+    if ! command -v python3 &>/dev/null; then MISSING+=("python3"); fi
+    if ! command -v git &>/dev/null; then MISSING+=("git"); fi
+    if ! command -v bluetoothctl &>/dev/null; then MISSING+=("bluez"); fi
+    if ! command -v modprobe &>/dev/null; then MISSING+=("kmod"); fi
+
+    if [ ${#MISSING[@]} -eq 0 ]; then
+        echo -e "  ${GREEN}✓ All core dependencies are installed (python3, git, bluez, kmod).${RESET}\n"
+        return 0
+    fi
+
+    echo -e "  ${YELLOW}⚠️  The following required system tools are missing:${RESET} ${BOLD}${MISSING[*]}${RESET}"
+    echo -e "  Attempting to install automatically using your system package manager...\n"
+
+    if command -v apt-get &>/dev/null; then
+        echo -e "  Detected APT package manager (Ubuntu/Debian/Mint/Pop!_OS)."
+        sudo apt-get update -qq || true
+        sudo apt-get install -y "${MISSING[@]}"
+    elif command -v dnf &>/dev/null; then
+        echo -e "  Detected DNF package manager (Fedora/RHEL)."
+        sudo dnf install -y "${MISSING[@]}"
+    elif command -v pacman &>/dev/null; then
+        echo -e "  Detected Pacman package manager (Arch Linux/Manjaro/SteamOS)."
+        local ARCH_PKGS=()
+        for p in "${MISSING[@]}"; do
+            if [ "$p" = "python3" ]; then ARCH_PKGS+=("python");
+            elif [ "$p" = "bluez" ]; then ARCH_PKGS+=("bluez" "bluez-utils");
+            else ARCH_PKGS+=("$p"); fi
+        done
+        sudo pacman -S --noconfirm "${ARCH_PKGS[@]}"
+    elif command -v zypper &>/dev/null; then
+        echo -e "  Detected Zypper package manager (openSUSE)."
+        sudo zypper install -y "${MISSING[@]}"
+    else
+        echo -e "  ${RED}Could not auto-detect package manager.${RESET}"
+        echo -e "  Please manually install: ${BOLD}${MISSING[*]}${RESET}\n"
+        exit 1
+    fi
+
+    echo -e "  ${GREEN}✓ Missing dependencies successfully installed.${RESET}\n"
+}
+
+check_and_install_dependencies
 
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IS_GIT_REPO=false
@@ -34,7 +75,7 @@ if [ -d "$SOURCE_DIR/.git" ]; then
 fi
 
 # 2. Installation Location Selection
-echo -e "${BOLD}${CYAN}[Step 1/5] Choose Installation Location${RESET}"
+echo -e "${BOLD}${CYAN}[Step 2/6] Choose Installation Location${RESET}"
 echo -e "${DIM}Where would you like Joy-Con Mouse files to be installed?${RESET}\n"
 
 DEFAULT_USER_DIR="$HOME/.local/share/joycon-mouse"
@@ -58,7 +99,6 @@ if [ "$IS_GIT_REPO" = true ]; then
         3) TARGET_DIR="$DEFAULT_SYS_DIR" ;;
         4)
             read -rp "$(echo -e "  Enter custom installation directory path: ")" CUSTOM_PATH
-            # Expand tilde
             CUSTOM_PATH="${CUSTOM_PATH/#\~/$HOME}"
             if [ -z "$CUSTOM_PATH" ]; then
                 TARGET_DIR="$DEFAULT_USER_DIR"
@@ -97,9 +137,9 @@ fi
 echo -e "  ${GREEN}✓ Selected destination:${RESET} $TARGET_DIR\n"
 
 # 3. Copy Application Files (if not linking in-place)
-echo -e "${BOLD}${CYAN}[Step 2/5] Setting up program files...${RESET}"
+echo -e "${BOLD}${CYAN}[Step 3/6] Setting up program files...${RESET}"
 if [ "$TARGET_DIR" != "$SOURCE_DIR" ]; then
-    echo -e "  Copying files to $TARGET_DIR..."
+    echo -e "  Deploying files to $TARGET_DIR..."
     if [[ "$TARGET_DIR" =~ ^/opt/ ]] || [[ "$TARGET_DIR" =~ ^/usr/ ]]; then
         sudo mkdir -p "$TARGET_DIR"
         sudo cp -r "$SOURCE_DIR/joycon-mouse.py" "$SOURCE_DIR/setup_wizard.py" "$SOURCE_DIR/setup.sh" "$SOURCE_DIR/uninstall.sh" "$SOURCE_DIR/test_buttons.py" "$SOURCE_DIR/modes" "$SOURCE_DIR/custom_modes" "$SOURCE_DIR/CUSTOM_MODES.md" "$SOURCE_DIR/README.md" "$SOURCE_DIR/LICENSE" "$TARGET_DIR/"
@@ -116,7 +156,7 @@ else
 fi
 
 # 4. Global Command Setup (PATH)
-echo -e "\n${BOLD}${CYAN}[Step 3/5] Configuring global terminal command...${RESET}"
+echo -e "\n${BOLD}${CYAN}[Step 4/6] Configuring global terminal command...${RESET}"
 if [[ "$TARGET_DIR" =~ ^/opt/ ]] || [[ "$TARGET_DIR" =~ ^/usr/ ]]; then
     BIN_PATH="/usr/local/bin/joycon-mouse"
     echo -e "  Creating system executable launcher at $BIN_PATH (requires sudo)..."
@@ -154,7 +194,7 @@ EOF
 fi
 
 # 5. Linux Permissions & Hardware Configuration
-echo -e "\n${BOLD}${CYAN}[Step 4/5] Checking Linux hardware permissions...${RESET}"
+echo -e "\n${BOLD}${CYAN}[Step 5/6] Checking Linux hardware permissions...${RESET}"
 
 # A. Input group check
 if ! groups "$USER" | grep -q '\binput\b'; then
@@ -208,7 +248,7 @@ else
 fi
 
 # 6. Interactive Setup Wizard
-echo -e "\n${BOLD}${CYAN}[Step 5/5] Controller Setup & Customization Wizard${RESET}"
+echo -e "\n${BOLD}${CYAN}[Step 6/6] Controller Setup & Customization Wizard${RESET}"
 echo -e "${DIM}Configure your preferred modes, pointer sensitivity, rumble, and autostart.${RESET}\n"
 
 read -rp "$(echo -e "  Launch interactive setup wizard now? [${GREEN}Y${RESET}/n]: ")" RUN_SETUP
