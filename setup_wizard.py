@@ -108,37 +108,44 @@ def setup_modes(cfg: Dict[str, Any]) -> None:
         print(f"            Type {BOLD}'all'{RESET} to enable all | Type {BOLD}'done'{RESET} or press {BOLD}[ENTER]{RESET} to continue")
         print("  " + "-" * 72)
 
-        ans = prompt_choice("  Toggle mode or continue", "done").lower()
+        ans = prompt_choice("  Toggle mode or continue", "done").lower().strip()
 
-        if ans in ("done", ""):
+        if ans in ("done", "", "y", "yes", "continue", "next", "ok", "c", "q", "quit"):
             break
         elif ans == "all":
             disabled_modes = []
             print(f"\n{GREEN}✓ Enabled all controller modes.{RESET}\n")
             continue
 
-        try:
-            choice_num = int(ans)
-            if 1 <= choice_num <= len(discovered):
-                target_mode = discovered[choice_num - 1]
-                norm_name = target_mode.name.lower().strip()
-                norm_file = os.path.splitext(os.path.basename(target_mode.file_path))[0].lower().strip() if target_mode.file_path else ""
+        # Support space or comma separated inputs (e.g. "4, 5" or "1 2")
+        tokens = [t.strip() for t in ans.replace(",", " ").split() if t.strip()]
+        valid_toggle = False
 
-                if target_mode.is_enabled:
-                    # Disable it
-                    if norm_file and norm_file not in disabled_modes:
-                        disabled_modes.append(norm_file)
-                    elif norm_name not in disabled_modes:
-                        disabled_modes.append(norm_name)
-                    print(f"\n{YELLOW}Disabled '{target_mode.name}'{RESET}\n")
+        for token in tokens:
+            try:
+                choice_num = int(token)
+                if 1 <= choice_num <= len(discovered):
+                    target_mode = discovered[choice_num - 1]
+                    norm_name = target_mode.name.lower().strip()
+                    norm_file = os.path.splitext(os.path.basename(target_mode.file_path))[0].lower().strip() if target_mode.file_path else ""
+
+                    if target_mode.is_enabled:
+                        if norm_file and norm_file not in disabled_modes:
+                            disabled_modes.append(norm_file)
+                        elif norm_name not in disabled_modes:
+                            disabled_modes.append(norm_name)
+                        print(f"{YELLOW}Disabled '{target_mode.name}'{RESET}")
+                    else:
+                        disabled_modes = [d for d in disabled_modes if d.lower() not in (norm_name, norm_file)]
+                        print(f"{GREEN}Enabled '{target_mode.name}'{RESET}")
+                    valid_toggle = True
                 else:
-                    # Enable it
-                    disabled_modes = [d for d in disabled_modes if d.lower() not in (norm_name, norm_file)]
-                    print(f"\n{GREEN}Enabled '{target_mode.name}'{RESET}\n")
-            else:
-                print(f"{RED}Please enter a number between 1 and {len(discovered)}.{RESET}\n")
-        except ValueError:
-            print(f"{RED}Invalid input. Enter a number, 'all', or press [ENTER] when done.{RESET}\n")
+                    print(f"{RED}Invalid mode number: {choice_num}. Enter a number between 1 and {len(discovered)}.{RESET}")
+            except ValueError:
+                print(f"{RED}Unrecognized input: '{token}'. Enter a number [1-{len(discovered)}], 'all', or press [ENTER].{RESET}")
+
+        if valid_toggle:
+            print()
 
     cfg["disabled_modes"] = disabled_modes
 
@@ -155,15 +162,15 @@ def setup_sensitivity(cfg: Dict[str, Any]) -> None:
     print(f"  {BOLD}[3] High-DPI / Fast (1.4x){RESET}    - Quick pointer navigation for 2K/4K displays")
     print(f"  {BOLD}[4] Custom Multiplier{RESET}        - Enter your own decimal value (e.g. 1.25)\n")
 
-    ans = prompt_choice("  Select sensitivity preset [1-4]", "1")
+    ans = prompt_choice("  Select sensitivity preset [1-4]", "1").lower().strip()
 
-    if ans == "1":
+    if ans in ("1", "balanced", "default"):
         cfg["sensitivity"] = 1.0
         print(f"{GREEN}✓ Set sensitivity to 1.0x (Balanced).{RESET}\n")
-    elif ans == "2":
+    elif ans in ("2", "precision", "casual", "slow"):
         cfg["sensitivity"] = 0.7
         print(f"{GREEN}✓ Set sensitivity to 0.7x (Precision).{RESET}\n")
-    elif ans == "3":
+    elif ans in ("3", "fast", "high", "high-dpi"):
         cfg["sensitivity"] = 1.4
         print(f"{GREEN}✓ Set sensitivity to 1.4x (High-DPI).{RESET}\n")
     elif ans == "4":
