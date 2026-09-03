@@ -2,9 +2,11 @@
 
 # 🎮 Joy-Con Mouse & Universal Media Remote for Linux
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Linux%20(Wayland%20%26%20X11)-lightgrey.svg)](https://kernel.org)
+[![CI](https://github.com/ImNotMrReaper/joycon-mouse/actions/workflows/ci.yml/badge.svg)](https://github.com/ImNotMrReaper/joycon-mouse/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/ImNotMrReaper/joycon-mouse?color=blue)](https://github.com/ImNotMrReaper/joycon-mouse/releases/latest)
 [![Dependencies](https://img.shields.io/badge/dependencies-zero%20external-success.svg)](https://github.com/ImNotMrReaper/joycon-mouse)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -295,16 +297,19 @@ To use the optional local authentication / sudo injection system:
 
 ---
 
-## 🤝 Contributing
+## 🤝 Contributing & Community Standards
 
 Contributions are warmly welcomed! Joy-Con Mouse was designed from the ground up to be modular and community-friendly. If you want to create a custom controller mode, enhance button mappings, or report hardware quirks:
 - Read [**`CUSTOM_MODES.md`**](CUSTOM_MODES.md) to see how to create and submit community modes.
 - Read the [Contributing Guide](CONTRIBUTING.md) for code style and standards.
+- Please review our [Code of Conduct](CODE_OF_CONDUCT.md).
 - Open an [Issue](https://github.com/ImNotMrReaper/joycon-mouse/issues) for feature requests or gamepad compatibility.
 - Submit a Pull Request to share your mode with other Linux users!
 
 ---
 
-## 📜 License
+## 📜 Changelog, Security & License
 
-Distributed under the [MIT License](LICENSE). Designed and crafted for the Linux and open-source gaming community.
+- **Releases & Changes**: See [**`CHANGELOG.md`**](CHANGELOG.md) for detailed version history.
+- **Security Policy**: See [**`SECURITY.md`**](SECURITY.md) for vulnerability disclosure guidelines.
+- **License**: Distributed under the [MIT License](LICENSE). Designed and crafted for the Linux and open-source gaming community.

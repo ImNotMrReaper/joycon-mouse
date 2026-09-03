@@ -6,35 +6,22 @@ Thank you for your interest in contributing to **Joy-Con Mouse**! Whether you ar
 
 ## 🧩 Building a Custom Controller Mode (Plugins)
 
-Joy-Con Mouse uses a modular plugin architecture. Any `.py` file placed inside the [`modes/`](modes/) directory is automatically discovered and loaded dynamically at runtime.
+Joy-Con Mouse features a hot-discoverable plugin architecture. Community modes live cleanly inside the [`custom_modes/`](custom_modes/) directory.
 
-### How to Create a New Mode in 5 Minutes:
-
-1. Create a new file in `modes/`, e.g., `modes/gaming.py` or `modes/presentation.py`.
-2. Inherit from `BaseMode` and define your name, description, and event handler:
-
-```python
-from modes.base import BaseMode, KEY_SPACE, KEY_F5, KEY_ESC, PAD_BTN_SOUTH, PAD_BTN_EAST
-
-class PresentationMode(BaseMode):
-    name = "Presentation Clicker"
-    description = "Wireless slideshow presenter for LibreOffice Impress and Google Slides"
-
-    def handle_event(self, event_type: int, code: int, value: int, joycon) -> bool:
-        # A button: Next Slide (Space)
-        if code == PAD_BTN_EAST:
-            joycon.emit_key(KEY_SPACE, value)
-            return True
-            
-        # B button: Start Presentation (F5)
-        elif code == PAD_BTN_SOUTH:
-            joycon.emit_key(KEY_F5, value)
-            return True
-            
-        return False
+### Quick Start: Scaffold in 1 Command
+```bash
+joycon-mouse --create-mode my_custom_mode
 ```
+This generates `custom_modes/my_custom_mode.py` pre-wired with standard button constants and layout handlers.
 
-3. Run `joycon-mouse -l` or restart the driver. Your new mode is immediately active!
+### Detailed Mode Guide & API Reference
+For a complete 3-step tutorial, supported action dictionary types, and architecture overview, see [**`CUSTOM_MODES.md`**](CUSTOM_MODES.md).
+
+### Standalone Mode Testing
+Every mode script can be executed standalone with Python to print an ASCII layout cheatsheet without needing a physical controller:
+```bash
+python3 custom_modes/my_custom_mode.py
+```
 
 ---
 
