@@ -773,6 +773,15 @@ def run_controller_session(
                             last_media_seek_timestamp = now_time
                             log.log("[Media Seek] Rewind -5s", level="INFO")
 
+            if getattr(active_mode, "enable_terminal_scroll", False):
+                for j_filter in joystick_filters.values():
+                    _, jdy = j_filter.process(delta_time)
+                    if abs(jdy) > 2 and (now_time - last_scroll_timestamp) >= 0.08:
+                        scroll_step = 1 if jdy < 0 else -1
+                        uinput.emit_scroll(scroll_step)
+                        last_scroll_timestamp = now_time
+
+
     finally:
         game_detector.stop()
         for fd in open_descriptors.keys():

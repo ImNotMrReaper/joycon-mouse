@@ -8,11 +8,10 @@ A zero-dependency, high-performance pure Python driver that transforms Nintendo 
 
 - **Zero External Dependencies**: Pure Python using standard library (`fcntl`, `struct`, `select`, `math`, `os`, `threading`). No pip dependencies or wrappers.
 - **Physical Haptic / Rumble Feedback**: Joy-Con provides physical vibration clicks when switching modes, capturing screenshots, or unlocking credentials.
-- **4 Built-in Modular Modes** (Drag-and-Drop in [`modes/`](modes/)):
+- **3 Built-in Modular Modes** (Drag-and-Drop in [`modes/`](modes/)):
   1. **Desktop Mouse**: Precision analog stick pointer with hybrid acceleration curve ($x^{1.6}$) and zero drift.
-  2. **Universal Media Remote**: Dedicated side-rail volume (`SL`/`SR`), subtitles (`C`), instant rewind (`-10s`), and analog stick continuous seek ($\pm 5	ext{s}$).
-  3. **Presentation & Slide Clicker**: Wireless slide clicker for PowerPoint, Google Slides, and PDFs (`PageDown`/`PageUp`, `F5` start, `B` black screen).
-  4. **Window & Workspace Manager**: Window snapping (`Super+Left`/`Super+Right`), maximize/minimize (`Super+Up`/`Super+Down`), app switcher (`Alt+Tab`), and workspace cycling (`Ctrl+Alt+Left`/`Right`).
+  2. **Universal Media Remote**: Dedicated side-rail volume (`SL`/`SR`), subtitles (`C`), instant rewind (`-10s`), and analog stick continuous seek ($\pm 5\text{s}$).
+  3. **Interactive Terminal Controller**: Hands-free AI pair programming & shell companion (`Enter`, History `Up`/`Down`, `Tab` auto-complete, `Esc`, `Ctrl+C` interrupt, `Ctrl+L` clear, and smooth buffer scrolling).
 - **1-Click Auto-Start Background Service**: Set up automatic background startup with `joycon-mouse --install-service`.
 - **Live Button & Stick Diagnostic Tool**: Interactive diagnostic visualizer (`joycon-mouse --test-buttons`).
 - **User Configuration File**: Persistent settings in `~/.config/joycon-mouse/config.json` for sensitivity, speeds, deadzones, and rumble.
@@ -38,8 +37,7 @@ joycon-mouse/
     ├── base.py                    # BaseMode base class & Linux keycode constants
     ├── air_mouse.py               # Mode 1: Precision Desktop Mouse & browser controls
     ├── media_remote.py            # Mode 2: Universal media remote with side-rail volume
-    ├── presentation.py            # Mode 3: Wireless presentation & slide clicker
-    └── window_manager.py          # Mode 4: Desktop window & workspace manager
+    └── terminal.py                # Mode 3: Interactive Terminal & Shell Controller
 ```
 
 ---
@@ -156,31 +154,21 @@ Cycle through active modes anytime by pressing **`+`** (Right Joy-Con) or **`-`*
 | **Stick Click** | `R3` | `L3` | Fullscreen Toggle (`F`) |
 | **Stick Left / Right**| Tilt Left / Right | Tilt Left / Right | Continuous Seek ($\pm 5	ext{s}$) |
 
-### Mode 3: Presentation & Slide Clicker
-| Button | Right Joy-Con | Left Joy-Con | Action |
-| :--- | :--- | :--- | :--- |
-| **Trigger** | `ZR` | `ZL` | Next Slide (`PageDown`) |
-| **Bumper** | `R` | `L` | Previous Slide (`PageUp`) |
-| **Face Up** | `X` | `Up` | Start Slideshow (`F5`) |
-| **Face Down** | `B` | `Down` | Previous Slide (`PageUp`) |
-| **Face Left** | `Y` | `Left` | Blank / Black Screen (`B`) |
-| **Face Right** | `A` | `Right` | Next Slide (`PageDown`) |
-| **Side Rail SL** | `SL` | `SL` | Exit Slideshow (`ESC`) |
-| **Side Rail SR** | `SR` | `SR` | Enter / Activate |
-| **Stick Click** | `R3` | `L3` | Laser Click (Left Click) |
-
-### Mode 4: Window & Workspace Manager
-| Button | Right Joy-Con | Left Joy-Con | Action |
-| :--- | :--- | :--- | :--- |
-| **Trigger** | `ZR` | `ZL` | Snap Window Right (`Super + Right`) |
-| **Bumper** | `R` | `L` | Snap Window Left (`Super + Left`) |
-| **Face Up** | `X` | `Up` | Maximize Window (`Super + Up`) |
-| **Face Down** | `B` | `Down` | Minimize / Restore (`Super + Down`) |
-| **Face Left** | `Y` | `Left` | App Switcher (`Alt + Tab`) |
-| **Face Right** | `A` | `Right` | Close Window (`Alt + F4`) |
-| **Side Rail SL** | `SL` | `SL` | Previous Workspace (`Ctrl + Alt + Left`) |
-| **Side Rail SR** | `SR` | `SR` | Next Workspace (`Ctrl + Alt + Right`) |
-| **Stick Click** | `R3` | `L3` | Overview / Activities (`Super`) |
+### Mode 3: Interactive Terminal Controller
+| Button | Right Joy-Con | Left Joy-Con | Universal Controller | Action |
+| :--- | :--- | :--- | :--- | :--- |
+| **Primary Trigger** | `ZR` | `ZL` | `RT / R2` | **Enter / Submit Command** |
+| **Bumper** | `R` | `L` | `RB / R1` | **Tab Auto-Complete** |
+| **Side Rail SL** | `SL` | `SL` | `LT / L2` | **Escape / Normal Mode** |
+| **Side Rail SR** | `SR` | `SR` | `LB / L1` | **Cancel / Interrupt (`Ctrl+C`)** |
+| **Face Up** | `X` | `Up` | `D-Pad Up` | **Previous Command (History Up)** |
+| **Face Down** | `B` | `Down` | `B / Circle` | **Backspace / Erase Character** |
+| **Face Left** | `Y` | `Left` | `D-Pad Down` | **Next Command (History Down)** |
+| **Face Right** | `A` | `Right` | `A / Cross` | **Enter / Confirm Prompt** |
+| **Stick Click** | `R3` | `L3` | `X / Square` | **Clear Screen (`Ctrl+L`)** |
+| **Analog Stick Tilt** | Stick Up/Down | Stick Up/Down | Stick Up/Down | **Smooth Terminal Buffer Scroll** |
+| **Home / Capture** | `Home` | `Capture` | `Guide` | Tap: Super / Win \| Hold: Screenshot |
+| **Plus / Minus** | `+` | `-` | `+ / Start` | **Cycle Controller Mode** |
 
 ---
 
