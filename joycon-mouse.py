@@ -931,6 +931,8 @@ def main() -> int:
                         help="Force specific profile.")
     parser.add_argument("-s", "--sensitivity", type=float, default=None, help="Pointer sensitivity multiplier (e.g. 1.2 or 0.8).")
     parser.add_argument("--set-code", action="store_true", help="Launch interactive wizard to set or change cheat-code.")
+    parser.add_argument("--setup", action="store_true", help="Launch interactive setup wizard to configure modes, sensitivity, rumble, and autostart.")
+    parser.add_argument("--uninstall", action="store_true", help="Launch interactive uninstaller to cleanly remove Joy-Con Mouse from your system.")
     parser.add_argument("--test-buttons", action="store_true", help="Launch real-time interactive button and stick diagnostic tool.")
     parser.add_argument("--install-service", action="store_true", help="Install & start automatic background startup service.")
     parser.add_argument("--uninstall-service", action="store_true", help="Uninstall background startup service.")
@@ -950,6 +952,24 @@ def main() -> int:
     if args.test_buttons:
         from test_buttons import main as test_main
         return test_main()
+
+    if args.setup:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        setup_script = os.path.join(script_dir, "setup_wizard.py")
+        if os.path.exists(setup_script):
+            return subprocess.call([sys.executable, setup_script])
+        else:
+            print("[Error] setup_wizard.py not found in application directory.")
+            return 1
+
+    if args.uninstall:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        uninstall_script = os.path.join(script_dir, "uninstall.sh")
+        if os.path.exists(uninstall_script):
+            return subprocess.call(["bash", uninstall_script])
+        else:
+            print("[Error] uninstall.sh not found in application directory.")
+            return 1
 
     config_mgr = ConfigManager()
     cfg = config_mgr.config

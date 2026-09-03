@@ -47,7 +47,10 @@ joycon-mouse/
 ├── CUSTOM_MODES.md                # Modular architecture guide & custom modes manual
 ├── CONTRIBUTING.md                # Community contribution guidelines
 ├── LICENSE                        # MIT License
-├── install.sh                     # Automated 1-command installer
+├── install.sh                     # Interactive 1-click installer & directory manager
+├── setup.sh                       # Interactive setup wizard launcher
+├── setup_wizard.py                # Visual configuration wizard (modes, speeds, rumble)
+├── uninstall.sh                   # Clean interactive uninstaller
 ├── joycon-mouse.py                # Main polling loop, auto-dormant manager, mode manager
 ├── test_buttons.py                # Interactive live button and stick diagnostic tool
 ├── security_manager.py.example    # Open-source template for security features
@@ -66,23 +69,52 @@ joycon-mouse/
 
 ## 🚀 Quick Start
 
-### 1. Prerequisites & User Permissions
+### 1. Interactive 1-Click Installer (Recommended)
 
-Add your user to the `input` group to access `/dev/uinput` and `/dev/input/event*`:
-
-```bash
-sudo usermod -aG input $USER
-```
-
-*(Log out and log back in or restart for group changes to take effect).*
-
-Ensure the `uinput` kernel module is loaded:
+Simply run the installer to set up Joy-Con Mouse in under 30 seconds:
 
 ```bash
-sudo modprobe uinput
+./install.sh
 ```
 
-### 2. Running the Driver
+The installer will guide you through:
+* **Smart Location Selection**: Installs into `~/.local/share/joycon-mouse` by default (no root needed), keeps in-place if you cloned via git, or allows entering any custom directory.
+* **Global Command Link**: Installs the `joycon-mouse` command globally into your `PATH`.
+* **Hardware Permissions**: Automatically checks Linux `input` group and loads `/dev/uinput`.
+* **Bluetooth Reconnect Optimization**: Automatically optimizes BlueZ so Joy-Cons reconnect immediately upon pressing any button.
+* **Guided Setup Wizard**: Chains directly into the visual setup wizard to customize your enabled modes, sensitivity, and autostart daemon.
+
+---
+
+### 2. Interactive Setup Wizard (`joycon-mouse --setup`)
+
+Re-adjust modes, mouse sensitivity presets, haptic rumble, and background autostart anytime:
+
+```bash
+# Via global CLI command:
+joycon-mouse --setup
+
+# Or via script in project folder:
+./setup.sh
+```
+
+---
+
+### 3. Clean Uninstaller (`joycon-mouse --uninstall`)
+
+Cleanly remove Joy-Con Mouse, background services, and binary links anytime:
+
+```bash
+# Via global CLI command:
+joycon-mouse --uninstall
+
+# Or via script in project folder:
+./uninstall.sh
+```
+
+---
+
+### 4. Running the Driver Manually
 
 List connected controllers:
 
@@ -90,7 +122,7 @@ List connected controllers:
 joycon-mouse -l
 ```
 
-Launch the driver:
+Launch the desktop driver:
 
 ```bash
 joycon-mouse
