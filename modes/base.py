@@ -83,6 +83,38 @@ class BaseMode:
     description: str = "Base controller mode"
     enable_joystick_cursor: bool = True
     enable_media_seek: bool = False
+    enable_terminal_scroll: bool = False
+
+    # Metadata set by the dynamic module loader
+    file_path: str = ""
+    is_custom: bool = False
+    is_enabled: bool = True
 
     def get_button_map(self, device_type: str) -> Dict[int, Dict[str, Any]]:
         raise NotImplementedError
+
+    def run_standalone(self) -> None:
+        """Prints mode layout and test information when executed directly as a script."""
+        mode_type = "Community / Custom Plugin" if self.is_custom else "Built-in Core Mode"
+        print("=" * 68)
+        print(f"  🎮 JOY-CON MOUSE MODULE: {self.name}")
+        print(f"  TYPE:        {mode_type}")
+        print(f"  DESCRIPTION: {self.description}")
+        print(f"  FEATURES:    Cursor: {'YES' if self.enable_joystick_cursor else 'NO'} | "
+              f"Media Seek: {'YES' if self.enable_media_seek else 'NO'} | "
+              f"Terminal Scroll: {'YES' if self.enable_terminal_scroll else 'NO'}")
+        print("=" * 68)
+
+        for dev in ["right_joycon", "left_joycon", "dual_joycon"]:
+            print(f"\n--- Controller Layout: {dev.replace('_', ' ').title()} ---")
+            try:
+                bm = self.get_button_map(dev)
+                seen = set()
+                for code, act in sorted(bm.items(), key=lambda x: str(x[1].get("desc", ""))):
+                    desc = act.get("desc", "")
+                    if desc and desc not in seen:
+                        seen.add(desc)
+                        print(f"  * {desc}")
+            except Exception as e:
+                print(f"  (Not defined for this device type: {e})")
+        print("\n" + "=" * 68)

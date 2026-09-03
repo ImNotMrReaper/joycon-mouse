@@ -5,7 +5,15 @@ Mode: Universal Media Remote (Universal MPRIS + Side Volume Buttons).
 Location: modes/media_remote.py
 """
 
+import os
+import sys
 from typing import Any, Dict
+
+# Ensure project root is in sys.path for standalone execution
+_project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+
 from modes.base import (
     BaseMode,
     KEY_C, KEY_F, KEY_MUTE, KEY_VOLUMEDOWN, KEY_VOLUMEUP,
@@ -85,3 +93,7 @@ class MediaRemoteMode(BaseMode):
             PAD_BTN_HOME: {"action": "smart_home", "desc": "Guide / Home -> Tap: Super | Hold: Screenshot"},
             PAD_BTN_CAPTURE: {"action": "smart_home", "desc": "Capture -> Tap: Super | Hold: Screenshot"},
         }
+
+
+if __name__ == "__main__":
+    MediaRemoteMode().run_standalone()

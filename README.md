@@ -16,15 +16,20 @@
 
 ## 🌟 Key Features
 
-- **Zero External Dependencies**: Pure Python using standard library (`fcntl`, `struct`, `select`, `math`, `os`, `threading`). No pip dependencies or wrappers.
+- **Zero External Dependencies**: Pure Python using standard library (`fcntl`, `struct`, `select`, `math`, `os`, `threading`, `importlib`). No pip dependencies or wrappers.
 - **Physical Haptic / Rumble Feedback**: Joy-Con provides physical vibration clicks when switching modes, capturing screenshots, or unlocking credentials.
-- **3 Built-in Modular Modes** (Drag-and-Drop in [`modes/`](modes/)):
-  1. **Desktop Mouse**: Precision analog stick pointer with hybrid acceleration curve ($x^{1.6}$) and zero drift.
-  2. **Universal Media Remote**: Dedicated side-rail volume (`SL`/`SR`), subtitles (`C`), instant rewind (`-10s`), and analog stick continuous seek ($\pm 5\text{s}$).
-  3. **Interactive Terminal Controller**: Hands-free AI pair programming & shell companion (`Enter`, History `Up`/`Down`, `Tab` auto-complete, `Esc`, `Ctrl+C` interrupt, `Ctrl+L` clear, and smooth buffer scrolling).
+- **Universal Modular Plugin Engine**: Fully decoupled mode architecture. Every mode is a standalone, hot-discoverable Python plugin.
+- **Built-in & Community Modes**:
+  1. **Desktop Mouse** ([`modes/air_mouse.py`](modes/air_mouse.py)): Precision analog stick pointer with hybrid acceleration curve ($x^{1.6}$) and zero drift.
+  2. **Universal Media Remote** ([`modes/media_remote.py`](modes/media_remote.py)): Dedicated side-rail volume (`SL`/`SR`), subtitles (`C`), instant rewind (`-10s`), and analog stick continuous seek ($\pm 5\text{s}$).
+  3. **Interactive Terminal Controller** ([`modes/terminal.py`](modes/terminal.py)): Hands-free AI pair programming & shell companion (`Enter`, History `Up`/`Down`, `Tab` auto-complete, `Esc`, `Ctrl+C` interrupt, `Ctrl+L` clear, and smooth buffer scrolling).
+  4. **Gaming & Macro Hotkeys** ([`custom_modes/gaming_hotkeys.py`](custom_modes/gaming_hotkeys.py)): Quick Save/Load, Map, Inventory, and F13-F16 macro keys.
+  5. **Wireless Presentation Clicker** ([`custom_modes/presentation.py`](custom_modes/presentation.py)): Slideshow control for Google Slides, Impress, and PowerPoint.
+- **CLI Mode Manager**: Manage, toggle, and scaffold modes directly via CLI (`--list-modes`, `--enable-mode`, `--disable-mode`, `--create-mode`).
+- **Standalone Mode Execution**: Every mode script can run independently (`python3 modes/terminal.py`) to output complete visual cheatsheets.
 - **1-Click Auto-Start Background Service**: Set up automatic background startup with `joycon-mouse --install-service`.
 - **Live Button & Stick Diagnostic Tool**: Interactive diagnostic visualizer (`joycon-mouse --test-buttons`).
-- **User Configuration File**: Persistent settings in `~/.config/joycon-mouse/config.json` for sensitivity, speeds, deadzones, and rumble.
+- **User Configuration File**: Persistent settings in `~/.config/joycon-mouse/config.json` for sensitivity, speeds, deadzones, rumble, and disabled modes.
 - **Auto-Dormant Game Detection**: Non-blocking background thread yields hardware grabbing (`EVIOCGRAB`) when Steam games or emulators launch.
 - **Dual Joy-Con Pairing**: Detects simultaneously connected Left and Right Joy-Cons and prompts to bind them into a single unified desktop controller.
 - **Smart Dual-Action Buttons**:
@@ -39,15 +44,22 @@
 joycon-mouse/
 ├── .gitignore                     # Excludes credentials, caches, and local virtualenvs
 ├── README.md                      # Public documentation
-├── joycon-mouse.py                # Main polling loop, auto-dormant manager, device grabber
+├── CUSTOM_MODES.md                # Modular architecture guide & custom modes manual
+├── CONTRIBUTING.md                # Community contribution guidelines
+├── LICENSE                        # MIT License
+├── install.sh                     # Automated 1-command installer
+├── joycon-mouse.py                # Main polling loop, auto-dormant manager, mode manager
 ├── test_buttons.py                # Interactive live button and stick diagnostic tool
 ├── security_manager.py.example    # Open-source template for security features
-└── modes/                         # Modular plugin directory (Drag-and-Drop)
-    ├── __init__.py                # Dynamic plugin auto-loader (discovers BaseMode subclasses)
-    ├── base.py                    # BaseMode base class & Linux keycode constants
-    ├── air_mouse.py               # Mode 1: Precision Desktop Mouse & browser controls
-    ├── media_remote.py            # Mode 2: Universal media remote with side-rail volume
-    └── terminal.py                # Mode 3: Interactive Terminal & Shell Controller
+├── modes/                         # Built-in core modes (BaseMode subclasses)
+│   ├── __init__.py                # Dynamic plugin auto-loader & template generator
+│   ├── base.py                    # BaseMode abstract class & Linux keycode constants
+│   ├── air_mouse.py               # Mode 1: Precision Desktop Mouse & browser controls
+│   ├── media_remote.py            # Mode 2: Universal media remote with side-rail volume
+│   └── terminal.py                # Mode 3: Interactive Terminal & Shell Controller
+└── custom_modes/                  # Community & user custom modes (Plug-and-Play)
+    ├── gaming_hotkeys.py          # Couch gaming hotkeys & F13-F16 macro keys
+    └── presentation.py            # Wireless slideshow presentation clicker
 ```
 
 ---
@@ -180,6 +192,60 @@ Cycle through active modes anytime by pressing **`+`** (Right Joy-Con) or **`-`*
 | **Home / Capture** | `Home` | `Capture` | `Guide` | Tap: Super / Win \| Hold: Screenshot |
 | **Plus / Minus** | `+` | `-` | `+ / Start` | **Cycle Controller Mode** |
 
+### Mode 4: Gaming & Macro Hotkeys (Community Mode)
+| Button | Right Joy-Con | Left Joy-Con | Action |
+| :--- | :--- | :--- | :--- |
+| **Trigger** | `ZR` | `ZL` | Jump / Action (`Space`) |
+| **Bumper** | `R` | `L` | Target / Tab (`Tab`) |
+| **Side Rail SL** | `SL` | `SL` | User Macro 1 (`F13`) |
+| **Side Rail SR** | `SR` | `SR` | User Macro 2 (`F14`) |
+| **Face Up** | `X` | `Up` | Inventory (`I`) |
+| **Face Down** | `B` | `Down` | Quick Load (`F9`) |
+| **Face Left** | `Y` | `Left` | Map (`M`) |
+| **Face Right** | `A` | `Right` | Quick Save (`F5`) |
+| **Stick Click** | `R3` | `L3` | Character Sheet (`C`) |
+
+### Mode 5: Wireless Presentation Clicker (Community Mode)
+| Button | Right Joy-Con | Left Joy-Con | Action |
+| :--- | :--- | :--- | :--- |
+| **Trigger** | `ZR` | `ZL` | Next Slide (`Space`) |
+| **Bumper** | `R` | `L` | Previous Slide (`Backspace`) |
+| **Face Up** | `X` | `Up` | Start Slideshow (`F5`) |
+| **Face Down** | `B` | `Down` | Black Screen (`B`) |
+| **Face Left / Right** | `Y` / `A` | `Left` / `Right` | Prev / Next Slide |
+| **Stick Click** | `R3` | `L3` | Exit Slideshow (`Esc`) |
+
+---
+
+## 🧩 Modular Plugins & Community Modes
+
+Joy-Con Mouse features a hot-discoverable plugin system. You can create custom modes, disable built-in modes you don't use, and share modes with the community.
+
+For full architectural details, tutorials, and contribution guides, see [**`CUSTOM_MODES.md`**](CUSTOM_MODES.md).
+
+### CLI Mode Management
+```bash
+# List all discovered built-in and community modes
+joycon-mouse --list-modes
+
+# Disable a mode from cycle loop (e.g. presentation)
+joycon-mouse --disable-mode presentation
+
+# Re-enable a mode
+joycon-mouse --enable-mode presentation
+
+# Scaffold a brand-new mode template in custom_modes/
+joycon-mouse --create-mode my_custom_mode
+```
+
+### Standalone Mode Testing
+Every mode script is completely standalone and runnable directly with Python without a controller:
+```bash
+python3 modes/terminal.py
+python3 custom_modes/presentation.py
+python3 custom_modes/gaming_hotkeys.py
+```
+
 ---
 
 ## 🔒 Security Module
@@ -200,7 +266,8 @@ To use the optional local authentication / sudo injection system:
 ## 🤝 Contributing
 
 Contributions are warmly welcomed! Joy-Con Mouse was designed from the ground up to be modular and community-friendly. If you want to create a custom controller mode, enhance button mappings, or report hardware quirks:
-- Read the [Contributing Guide](CONTRIBUTING.md) to see how to build a custom plugin in under 15 lines of code.
+- Read [**`CUSTOM_MODES.md`**](CUSTOM_MODES.md) to see how to create and submit community modes.
+- Read the [Contributing Guide](CONTRIBUTING.md) for code style and standards.
 - Open an [Issue](https://github.com/ImNotMrReaper/joycon-mouse/issues) for feature requests or gamepad compatibility.
 - Submit a Pull Request to share your mode with other Linux users!
 

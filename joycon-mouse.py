@@ -102,7 +102,8 @@ class ConfigManager:
         "accel_exponent": 1.6,
         "rumble_enabled": True,
         "auto_dormant_enabled": True,
-        "scroll_repeat_ms": 70
+        "scroll_repeat_ms": 70,
+        "disabled_modes": []
     }
 
     def __init__(self, config_dir: Optional[str] = None):
@@ -128,6 +129,32 @@ class ConfigManager:
             except Exception:
                 pass
         return cfg
+
+    def save_config(self) -> None:
+        """Persists current configuration to disk."""
+        try:
+            os.makedirs(self.config_dir, exist_ok=True)
+            with open(self.config_file, "w", encoding="utf-8") as f:
+                json.dump(self.config, f, indent=4)
+        except Exception as e:
+            print(f"[Config Error] Could not save {self.config_file}: {e}")
+
+    def disable_mode(self, mode_name: str) -> None:
+        """Disables a mode in user configuration."""
+        d_modes = list(self.config.get("disabled_modes", []))
+        norm = mode_name.lower().strip()
+        if norm not in [m.lower().strip() for m in d_modes]:
+            d_modes.append(norm)
+            self.config["disabled_modes"] = d_modes
+            self.save_config()
+
+    def enable_mode(self, mode_name: str) -> None:
+        """Enables a mode in user configuration."""
+        d_modes = list(self.config.get("disabled_modes", []))
+        norm = mode_name.lower().strip()
+        filtered = [m for m in d_modes if m.lower().strip() != norm]
+        self.config["disabled_modes"] = filtered
+        self.save_config()
 
 
 class DriverLogger:
@@ -535,12 +562,13 @@ def run_controller_session(
     logger: Optional[DriverLogger] = None,
     rumble: Optional[RumbleManager] = None,
     auto_dormant: bool = True,
-    exclusive_grab: bool = True
+    exclusive_grab: bool = True,
+    disabled_modes: Optional[List[str]] = None
 ) -> None:
     """Runs event polling with auto-dormant detection, haptics, and dynamic mode execution."""
-    active_modes = load_all_modes()
+    active_modes = load_all_modes(disabled_modes=disabled_modes)
     if not active_modes:
-        print("[Error] No modes found in modes/ directory. Ensure mode files exist.")
+        print("[Error] No active modes found. Check your disabled_modes or modes/ directory.")
         return
 
     log = logger or DriverLogger()
@@ -845,12 +873,59 @@ def uninstall_systemd_service() -> int:
         return 1
 
 
+def list_all_modes_cli(config_mgr: ConfigManager) -> int:
+    """Prints a structured table of all discovered built-in and community modes."""
+    from modes import discover_all_modes
+    disabled_modes = config_mgr.config.get("disabled_modes", [])
+    modes_list = discover_all_modes(disabled_modes=disabled_modes)
+
+    print("\n" + "=" * 80)
+    print("  🎮 JOY-CON MOUSE MODULAR CONTROLLER MODES")
+    print("=" * 80)
+    print(f"  {'STATUS':<10} {'TYPE':<12} {'MODE NAME':<34} {'SOURCE FILE'}")
+    print("-" * 80)
+
+    if not modes_list:
+        print("  No controller modes found in modes/ or custom_modes/.")
+        print("=" * 80 + "\n")
+        return 0
+
+    for m in modes_list:
+        status_str = "[ENABLED]" if m.is_enabled else "[DISABLED]"
+        type_str = "Custom" if m.is_custom else "Built-in"
+        rel_path = os.path.relpath(m.file_path, os.getcwd()) if m.file_path else "unknown"
+        print(f"  {status_str:<10} {type_str:<12} {m.name:<34} {rel_path}")
+        print(f"             Description: {m.description}")
+        features = []
+        if m.enable_joystick_cursor:
+            features.append("Analog Cursor")
+        if m.enable_media_seek:
+            features.append("Media Seek")
+        if m.enable_terminal_scroll:
+            features.append("Terminal Scroll")
+        feat_str = ", ".join(features) if features else "Button Mappings Only"
+        print(f"             Features:    {feat_str}\n")
+
+    print("=" * 80)
+    print("  💡 MANAGEMENT COMMANDS:")
+    print("  * Enable a mode:   joycon-mouse --enable-mode <name_or_file>")
+    print("  * Disable a mode:  joycon-mouse --disable-mode <name_or_file>")
+    print("  * Create new mode: joycon-mouse --create-mode <name>")
+    print("  * Test a mode:     python3 custom_modes/<name>.py")
+    print("=" * 80 + "\n")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="joycon-mouse",
         description="Nintendo Switch Joy-Con & Multi-Gamepad Ultra-Low Latency Desktop Driver for Linux."
     )
     parser.add_argument("-l", "--list", action="store_true", help="List detected controllers and exit.")
+    parser.add_argument("--list-modes", action="store_true", help="List all available controller modes (built-in and custom) and exit.")
+    parser.add_argument("--enable-mode", type=str, metavar="NAME", help="Enable a controller mode in user configuration.")
+    parser.add_argument("--disable-mode", type=str, metavar="NAME", help="Disable a controller mode in user configuration.")
+    parser.add_argument("--create-mode", type=str, metavar="NAME", help="Scaffold a new custom controller mode template in custom_modes/.")
     parser.add_argument("-p", "--profile", type=str, default=None,
                         choices=["right_joycon", "left_joycon", "dual_joycon", "switch_pro", "playstation", "xbox", "generic_gamepad"],
                         help="Force specific profile.")
@@ -878,6 +953,31 @@ def main() -> int:
 
     config_mgr = ConfigManager()
     cfg = config_mgr.config
+
+    if args.list_modes:
+        return list_all_modes_cli(config_mgr)
+
+    if args.enable_mode:
+        config_mgr.enable_mode(args.enable_mode)
+        print(f"\n[SUCCESS] Enabled mode '{args.enable_mode}' in {config_mgr.config_file}\n")
+        return 0
+
+    if args.disable_mode:
+        config_mgr.disable_mode(args.disable_mode)
+        print(f"\n[SUCCESS] Disabled mode '{args.disable_mode}' in {config_mgr.config_file}\n")
+        return 0
+
+    if args.create_mode:
+        from modes import create_mode_template
+        try:
+            new_file = create_mode_template(args.create_mode)
+            print(f"\n[SUCCESS] Created new modular mode template at:\n  -> {new_file}\n")
+            print("Edit this file to customize your button mappings!")
+            print(f"Test your mode standalone anytime by running: python3 {new_file}\n")
+            return 0
+        except Exception as e:
+            print(f"[Error] Could not create mode template: {e}")
+            return 1
 
     if args.sensitivity is not None:
         cfg["sensitivity"] = args.sensitivity
@@ -959,7 +1059,8 @@ def main() -> int:
                 logger=logger,
                 rumble=rumble,
                 auto_dormant=bool(cfg.get("auto_dormant_enabled", True)),
-                exclusive_grab=not args.no_grab
+                exclusive_grab=not args.no_grab,
+                disabled_modes=cfg.get("disabled_modes", [])
             )
         except KeyboardInterrupt:
             print("\nSession stopped by user.")
