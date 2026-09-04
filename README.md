@@ -1,16 +1,16 @@
 <div align="center">
 
-# 🎮 Joy-Con Mouse & Universal Media Remote for Linux
+# 🎮 Joy-Con Mouse & Universal Media Remote
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Platform](https://img.shields.io/badge/platform-Linux%20(Wayland%20%26%20X11)-lightgrey.svg)](https://kernel.org)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-blue.svg)](#-quick-start-by-operating-system)
 [![CI](https://github.com/ImNotMrReaper/joycon-mouse/actions/workflows/ci.yml/badge.svg)](https://github.com/ImNotMrReaper/joycon-mouse/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/ImNotMrReaper/joycon-mouse?color=blue)](https://github.com/ImNotMrReaper/joycon-mouse/releases/latest)
 [![Dependencies](https://img.shields.io/badge/dependencies-zero%20external-success.svg)](https://github.com/ImNotMrReaper/joycon-mouse)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-**Transform Nintendo Switch Joy-Cons into a wireless precision desktop mouse, couch media remote, and terminal companion on Linux with zero external dependencies.**
+**Transform Nintendo Switch Joy-Cons into a wireless precision desktop mouse, couch media remote, and presentation clicker with zero external dependencies.**
 
 <br/>
 
@@ -79,66 +79,56 @@ joycon-mouse/
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start by Operating System
 
-### 1. Interactive 1-Click Installer (Recommended)
+Choose your platform below for instant 1-click setup instructions:
 
-Simply run the installer to set up Joy-Con Mouse in under 30 seconds:
+### 🪟 Windows (Windows 10 & 11) — [`windows` Branch](https://github.com/ImNotMrReaper/joycon-mouse/tree/windows)
 
-```bash
-./install.sh
-```
-
-The installer will guide you through:
-* **Smart Location Selection**: Installs into `~/.local/share/joycon-mouse` by default (no root needed), keeps in-place if you cloned via git, or allows entering any custom directory.
-* **Global Command Link**: Installs the `joycon-mouse` command globally into your `PATH`.
-* **Hardware Permissions**: Automatically checks Linux `input` group and loads `/dev/uinput`.
-* **Bluetooth Reconnect Optimization**: Automatically optimizes BlueZ so Joy-Cons reconnect immediately upon pressing any button.
-* **Guided Setup Wizard**: Chains directly into the visual setup wizard to customize your enabled modes, sensitivity, and autostart daemon.
-
----
-
-### 2. Interactive Setup Wizard (`joycon-mouse --setup`)
-
-Re-adjust modes, mouse sensitivity presets, haptic rumble, and background autostart anytime:
-
-```bash
-# Via global CLI command:
-joycon-mouse --setup
-
-# Or via script in project folder:
-./setup.sh
-```
+1. **Pair your Joy-Con:** Hold the round Sync button on the Joy-Con side-rail until lights flash, then connect via **Windows Settings > Bluetooth & devices**.
+2. **Download the Windows Branch:**
+   * Download the ZIP from the [`windows` branch](https://github.com/ImNotMrReaper/joycon-mouse/tree/windows) and extract it (or `git checkout windows`).
+3. **1-Click Installer (`install.bat`):**
+   * Double-click **`install.bat`**.
+   * Auto-detects Python (or offers 1-click installation via winget), sets up user settings in `%APPDATA%\joycon-mouse`, and generates **Desktop and Start Menu shortcuts**.
+4. **Launch Anytime:**
+   * Double-click the **Joy-Con Mouse** icon on your Desktop or run **`run_windows.bat`**!
+   * *Want a standalone `.exe`?* Double-click **`build_exe.bat`** to package `JoyConMouse.exe` in 1 click!
+   * *Uninstall:* Double-click **`uninstall.bat`** anytime to cleanly remove shortcuts.
 
 ---
 
-### 3. Clean Uninstaller (`joycon-mouse --uninstall`)
+### 🐧 Linux (Ubuntu, Debian, Fedora, Arch, Steam Deck) — [`main` Branch](https://github.com/ImNotMrReaper/joycon-mouse/tree/main)
 
-Cleanly remove Joy-Con Mouse, background services, and binary links anytime:
-
-```bash
-# Via global CLI command:
-joycon-mouse --uninstall
-
-# Or via script in project folder:
-./uninstall.sh
-```
+1. **Interactive 1-Click Installer:**
+   ```bash
+   ./install.sh
+   ```
+   * Auto-resolves distro dependencies (APT, DNF, Pacman, Zypper).
+   * Installs global command `joycon-mouse` into your `$PATH`.
+   * Optimizes BlueZ reconnection and configures uinput permissions.
+2. **Interactive Setup Wizard:**
+   ```bash
+   joycon-mouse --setup
+   ```
+3. **Clean Uninstaller:**
+   ```bash
+   joycon-mouse --uninstall
+   ```
+4. **Manual Run & Controller Listing:**
+   ```bash
+   joycon-mouse -l      # List detected controllers
+   joycon-mouse         # Start polling loop
+   ```
 
 ---
 
-### 4. Running the Driver Manually
+### 🍎 macOS (Monterey, Ventura, Sonoma, Sequoia) — [`macos` Branch](https://github.com/ImNotMrReaper/joycon-mouse/tree/macos)
 
-List connected controllers:
-
-```bash
-joycon-mouse -l
-```
-
-Launch the desktop driver:
-
-```bash
-joycon-mouse
-```
+1. **Pair your Joy-Con:** Hold the Sync button, open **System Settings > Bluetooth**, and click Connect.
+2. **Download the Mac Branch:** Download the ZIP from the [`macos` branch](https://github.com/ImNotMrReaper/joycon-mouse/tree/macos) (or `git checkout macos`).
+3. **Accessibility Permission:** Ensure Terminal is enabled under **System Settings > Privacy & Security > Accessibility**.
+4. **Launch Anytime:** Double-click **`run_macos.command`**!
 
 ---
 
