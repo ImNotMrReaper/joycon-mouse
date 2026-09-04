@@ -59,6 +59,21 @@ MOUSE_BTN_FORWARD = 0x114
 GAME_PROCESS_PATTERN = "steamapps|steam_app|retroarch|rpcs3|dolphin-emu|yuzu|ryujinx|pcsx2|cemu|heroic|lutris"
 
 
+def is_wsl_environment() -> bool:
+    """Detect if running under Windows Subsystem for Linux (WSL)."""
+    if os.path.exists("/proc/version"):
+        try:
+            with open("/proc/version", "r", encoding="utf-8") as f:
+                content = f.read().lower()
+                if "microsoft" in content or "wsl" in content:
+                    return True
+        except Exception:
+            pass
+    if "WSL_DISTRO_NAME" in os.environ or "WSL_INTEROP" in os.environ:
+        return True
+    return False
+
+
 def ioctl_code(direction: int, type_char: str, number: int, size: int) -> int:
     return (direction << 30) | (size << 16) | (ord(type_char) << 8) | number
 
@@ -388,9 +403,11 @@ class VirtualMouseDevice:
                     continue
 
         if self.file_descriptor is None:
-            raise FileNotFoundError(
-                "Neither /dev/uinput nor /dev/input/uinput is accessible. Ensure uinput module is loaded: sudo modprobe uinput"
-            )
+            err = "Neither /dev/uinput nor /dev/input/uinput is accessible. Ensure uinput module is loaded: sudo modprobe uinput"
+            if is_wsl_environment():
+                err += "\n[WSL Tip] Load uinput in WSL with: sudo modprobe uinput"
+                err += "\n[WSL Tip] Or switch to the 'windows' branch and run 'run_windows.bat' natively on Windows!"
+            raise FileNotFoundError(err)
 
         fcntl.ioctl(self.file_descriptor, UI_SET_EVBIT, EVENT_SYN)
         fcntl.ioctl(self.file_descriptor, UI_SET_EVBIT, EVENT_KEY)
@@ -1118,6 +1135,9 @@ def main() -> int:
         controllers = discover_input_devices()
         if not controllers:
             print("[Waiting] No Joy-Cons or Gamepads detected. Turn on or plug in controller...")
+            if is_wsl_environment():
+                print("  [WSL Tip] To forward USB or Bluetooth gamepads into WSL, use: usbipd wsl attach --busid <busid>")
+                print("  [WSL Tip] For 1-click Windows desktop control without VM setup, checkout the 'windows' branch and run 'run_windows.bat'!")
             time.sleep(2.0)
             continue
 

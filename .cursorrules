@@ -1,0 +1,8 @@
+# Joy-Con Mouse & Universal Remote - Cursor AI Rules
+# Strict zero-dependency, ultra-low latency controller driver.
+
+- CRITICAL: Never add external pip packages or create requirements.txt with external libs. Rely ONLY on the Python standard library.
+- CRITICAL: Do not introduce heavy GUI frameworks (Electron, PyQt, Tkinter). Everything uses terminal CLI/wizards or JSON configs.
+- CRITICAL: When adding shortcuts or app controls, create modular plugins in custom_modes/ inheriting from BaseMode. Do not hardcode them into the core polling engine.
+- Linux kernel code (/dev/uinput, ioctl) belongs on 'main'. Windows ctypes belongs on 'windows'. macOS CoreGraphics belongs on 'macos'.
+- Always read AGENTS.md for full architectural specifications.
