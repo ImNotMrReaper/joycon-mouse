@@ -12,7 +12,17 @@
 
 **Transform Nintendo Switch Joy-Cons into a wireless precision desktop mouse, couch media remote, and terminal companion on Linux with zero external dependencies.**
 
+<br/>
+
+<img src="assets/joycon_banner.svg" alt="Joy-Con Mouse for Linux Banner" width="100%">
+
 </div>
+
+---
+
+> [!TIP]
+> **🚀 Tested on a different Linux distro, Steam Deck, or controller?**  
+> We'd love your feedback! [Open an issue or testing report](https://github.com/ImNotMrReaper/joycon-mouse/issues) to share your distro and hardware setup, or submit a custom mode PR via [`CUSTOM_MODES.md`](CUSTOM_MODES.md).
 
 ---
 
