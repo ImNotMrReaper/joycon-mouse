@@ -873,16 +873,45 @@ def uninstall_systemd_service() -> int:
         return 1
 
 
-def list_all_modes_cli(config_mgr: ConfigManager) -> int:
-    """Prints a structured table of all discovered built-in and community modes."""
+def list_all_modes_cli(config_mgr: ConfigManager, query: Optional[str] = None) -> int:
+    """Prints a structured table of all discovered built-in and community modes, or inspects a specific mode."""
     from modes import discover_all_modes
     disabled_modes = config_mgr.config.get("disabled_modes", [])
     modes_list = discover_all_modes(disabled_modes=disabled_modes)
 
+    if query and query != "__ALL__":
+        query_str = query.strip().lower()
+        matched = None
+        # Match by 1-based index (e.g. "1", "2", "3", "4", "5")
+        if query_str.isdigit():
+            idx = int(query_str) - 1
+            if 0 <= idx < len(modes_list):
+                matched = modes_list[idx]
+        if not matched:
+            # Match by filename stem, full filename, or mode name
+            for m in modes_list:
+                fname = os.path.basename(m.file_path).lower() if m.file_path else ""
+                stem = os.path.splitext(fname)[0]
+                mname = m.name.lower()
+                if query_str == stem or query_str in fname or query_str in mname:
+                    matched = m
+                    break
+        if matched:
+            matched.run_standalone()
+            return 0
+        else:
+            print(f"\n[Error] Mode matching '{query}' not found.")
+            print("Available modes:")
+            for idx, m in enumerate(modes_list, 1):
+                fname = os.path.basename(m.file_path) if m.file_path else "unknown"
+                print(f"  [{idx}] {m.name} ({fname})")
+            print()
+            return 1
+
     print("\n" + "=" * 80)
     print("  🎮 JOY-CON MOUSE MODULAR CONTROLLER MODES")
     print("=" * 80)
-    print(f"  {'STATUS':<10} {'TYPE':<12} {'MODE NAME':<34} {'SOURCE FILE'}")
+    print(f"  {'#':<4} {'STATUS':<10} {'TYPE':<10} {'MODE NAME':<32} {'SOURCE FILE'}")
     print("-" * 80)
 
     if not modes_list:
@@ -890,11 +919,11 @@ def list_all_modes_cli(config_mgr: ConfigManager) -> int:
         print("=" * 80 + "\n")
         return 0
 
-    for m in modes_list:
+    for idx, m in enumerate(modes_list, 1):
         status_str = "[ENABLED]" if m.is_enabled else "[DISABLED]"
         type_str = "Custom" if m.is_custom else "Built-in"
         rel_path = os.path.relpath(m.file_path, os.getcwd()) if m.file_path else "unknown"
-        print(f"  {status_str:<10} {type_str:<12} {m.name:<34} {rel_path}")
+        print(f"  [{idx}]  {status_str:<10} {type_str:<10} {m.name:<32} {rel_path}")
         print(f"             Description: {m.description}")
         features = []
         if m.enable_joystick_cursor:
@@ -908,10 +937,11 @@ def list_all_modes_cli(config_mgr: ConfigManager) -> int:
 
     print("=" * 80)
     print("  💡 MANAGEMENT COMMANDS:")
-    print("  * Enable a mode:   joycon-mouse --enable-mode <name_or_file>")
-    print("  * Disable a mode:  joycon-mouse --disable-mode <name_or_file>")
-    print("  * Create new mode: joycon-mouse --create-mode <name>")
-    print("  * Test a mode:     python3 custom_modes/<name>.py")
+    print("  * View mode layout: joycon-mouse --list-modes <name_or_number>")
+    print("  * Enable a mode:    joycon-mouse --enable-mode <name_or_file>")
+    print("  * Disable a mode:   joycon-mouse --disable-mode <name_or_file>")
+    print("  * Create new mode:  joycon-mouse --create-mode <name>")
+    print("  * Test a mode:      python3 custom_modes/<name>.py")
     print("=" * 80 + "\n")
     return 0
 
@@ -922,7 +952,10 @@ def main() -> int:
         description="Nintendo Switch Joy-Con & Multi-Gamepad Ultra-Low Latency Desktop Driver for Linux."
     )
     parser.add_argument("-l", "--list", action="store_true", help="List detected controllers and exit.")
-    parser.add_argument("--list-modes", action="store_true", help="List all available controller modes (built-in and custom) and exit.")
+    parser.add_argument("--list-modes", nargs="?", const="__ALL__", default=None, metavar="NAME",
+                        help="List all available controller modes, or view full layout for a mode by name or number.")
+    parser.add_argument("--show-mode", type=str, metavar="NAME",
+                        help="View button layout and cheatsheet for a specific controller mode.")
     parser.add_argument("--enable-mode", type=str, metavar="NAME", help="Enable a controller mode in user configuration.")
     parser.add_argument("--disable-mode", type=str, metavar="NAME", help="Disable a controller mode in user configuration.")
     parser.add_argument("--create-mode", type=str, metavar="NAME", help="Scaffold a new custom controller mode template in custom_modes/.")
@@ -974,8 +1007,11 @@ def main() -> int:
     config_mgr = ConfigManager()
     cfg = config_mgr.config
 
-    if args.list_modes:
-        return list_all_modes_cli(config_mgr)
+    if args.list_modes is not None:
+        return list_all_modes_cli(config_mgr, query=args.list_modes)
+
+    if args.show_mode:
+        return list_all_modes_cli(config_mgr, query=args.show_mode)
 
     if args.enable_mode:
         config_mgr.enable_mode(args.enable_mode)
