@@ -84,13 +84,26 @@ def discover_all_modes(
                         instance.file_path = file_path
                         instance.is_custom = is_custom_dir
 
-                        # Check if mode is disabled by name, class, or filename
-                        identifier_keys = {
-                            instance.name.lower().strip(),
-                            obj.__name__.lower().strip(),
-                            os.path.splitext(fname)[0].lower().strip()
-                        }
-                        instance.is_enabled = not bool(identifier_keys & disabled_set)
+                        # Check if mode is disabled by name, class, filename stem, or path
+                        mode_stem = os.path.splitext(fname)[0].lower().strip()
+                        mode_name = instance.name.lower().strip()
+                        class_name = obj.__name__.lower().strip()
+
+                        is_disabled = False
+                        for d in disabled_set:
+                            clean_d = d.strip()
+                            if not clean_d:
+                                continue
+                            d_stem = os.path.splitext(os.path.basename(clean_d))[0].lower().strip()
+                            if (clean_d in (mode_stem, mode_name, class_name) or
+                                d_stem == mode_stem or
+                                clean_d in mode_name or
+                                clean_d in mode_stem or
+                                mode_stem in clean_d):
+                                is_disabled = True
+                                break
+
+                        instance.is_enabled = not is_disabled
                         discovered.append(instance)
 
             except Exception as e:

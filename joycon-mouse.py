@@ -139,22 +139,81 @@ class ConfigManager:
         except Exception as e:
             print(f"[Config Error] Could not save {self.config_file}: {e}")
 
-    def disable_mode(self, mode_name: str) -> None:
-        """Disables a mode in user configuration."""
+    def disable_mode(self, mode_query: str) -> str:
+        """Disables a mode in user configuration with smart name/index resolution."""
+        from modes import discover_all_modes
+        all_modes = discover_all_modes()
+
+        target_name = mode_query.strip()
+        canonical_key = mode_query.strip().lower()
+
+        matched = None
+        if mode_query.strip().isdigit():
+            idx = int(mode_query.strip()) - 1
+            if 0 <= idx < len(all_modes):
+                matched = all_modes[idx]
+        if not matched:
+            clean_q = os.path.splitext(os.path.basename(mode_query.strip().lower()))[0]
+            for m in all_modes:
+                m_stem = os.path.splitext(os.path.basename(m.file_path))[0].lower() if m.file_path else ""
+                if clean_q == m_stem or clean_q == m.name.lower() or clean_q in m_stem or clean_q in m.name.lower():
+                    matched = m
+                    break
+
+        if matched:
+            target_name = matched.name
+            canonical_key = os.path.splitext(os.path.basename(matched.file_path))[0].lower() if matched.file_path else matched.name.lower()
+        else:
+            canonical_key = os.path.splitext(os.path.basename(mode_query.strip().lower()))[0]
+
         d_modes = list(self.config.get("disabled_modes", []))
-        norm = mode_name.lower().strip()
-        if norm not in [m.lower().strip() for m in d_modes]:
-            d_modes.append(norm)
+        norm_existing = [os.path.splitext(os.path.basename(m))[0].lower() for m in d_modes]
+        if canonical_key not in norm_existing and canonical_key not in [m.lower() for m in d_modes]:
+            d_modes.append(canonical_key)
             self.config["disabled_modes"] = d_modes
             self.save_config()
+        return target_name
 
-    def enable_mode(self, mode_name: str) -> None:
-        """Enables a mode in user configuration."""
+    def enable_mode(self, mode_query: str) -> str:
+        """Enables a mode in user configuration with smart name/index resolution."""
+        from modes import discover_all_modes
+        all_modes = discover_all_modes()
+
+        target_name = mode_query.strip()
+        canonical_key = mode_query.strip().lower()
+
+        matched = None
+        if mode_query.strip().isdigit():
+            idx = int(mode_query.strip()) - 1
+            if 0 <= idx < len(all_modes):
+                matched = all_modes[idx]
+        if not matched:
+            clean_q = os.path.splitext(os.path.basename(mode_query.strip().lower()))[0]
+            for m in all_modes:
+                m_stem = os.path.splitext(os.path.basename(m.file_path))[0].lower() if m.file_path else ""
+                if clean_q == m_stem or clean_q == m.name.lower() or clean_q in m_stem or clean_q in m.name.lower():
+                    matched = m
+                    break
+
+        if matched:
+            target_name = matched.name
+            canonical_key = os.path.splitext(os.path.basename(matched.file_path))[0].lower() if matched.file_path else matched.name.lower()
+        else:
+            canonical_key = os.path.splitext(os.path.basename(mode_query.strip().lower()))[0]
+
         d_modes = list(self.config.get("disabled_modes", []))
-        norm = mode_name.lower().strip()
-        filtered = [m for m in d_modes if m.lower().strip() != norm]
+        clean_q = mode_query.strip().lower()
+        target_lower = target_name.lower()
+        filtered = []
+        for m in d_modes:
+            m_stem = os.path.splitext(os.path.basename(m))[0].lower()
+            m_clean = m.strip().lower()
+            if m_stem in (canonical_key, clean_q) or m_clean in (canonical_key, target_lower, clean_q) or canonical_key in m_clean or m_clean in canonical_key:
+                continue
+            filtered.append(m)
         self.config["disabled_modes"] = filtered
         self.save_config()
+        return target_name
 
 
 class DriverLogger:
@@ -1014,13 +1073,13 @@ def main() -> int:
         return list_all_modes_cli(config_mgr, query=args.show_mode)
 
     if args.enable_mode:
-        config_mgr.enable_mode(args.enable_mode)
-        print(f"\n[SUCCESS] Enabled mode '{args.enable_mode}' in {config_mgr.config_file}\n")
+        resolved = config_mgr.enable_mode(args.enable_mode)
+        print(f"\n[SUCCESS] Enabled mode '{resolved}' in {config_mgr.config_file}\n")
         return 0
 
     if args.disable_mode:
-        config_mgr.disable_mode(args.disable_mode)
-        print(f"\n[SUCCESS] Disabled mode '{args.disable_mode}' in {config_mgr.config_file}\n")
+        resolved = config_mgr.disable_mode(args.disable_mode)
+        print(f"\n[SUCCESS] Disabled mode '{resolved}' in {config_mgr.config_file}\n")
         return 0
 
     if args.create_mode:
