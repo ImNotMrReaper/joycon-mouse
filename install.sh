@@ -20,6 +20,13 @@ echo -e "  ${BOLD}${PURPLE}🎮 JOY-CON MOUSE INTERACTIVE INSTALLER FOR LINUX${R
 echo -e "  ${DIM}Transform Joy-Cons & Gamepads into a precision mouse & media remote.${RESET}"
 echo -e "================================================================================\n"
 
+# WSL Notice
+if [ -f /proc/version ] && grep -qi "microsoft" /proc/version; then
+    echo -e "  ${YELLOW}ℹ️  Notice: Running inside Windows Subsystem for Linux (WSL).${RESET}"
+    echo -e "  ${DIM}For native Windows desktop control without VM setup, we recommend${RESET}"
+    echo -e "  ${DIM}switching to the 'windows' branch and running 'run_windows.bat' directly on Windows!${RESET}\n"
+fi
+
 # 1. Dependency Resolution
 check_and_install_dependencies() {
     echo -e "${BOLD}${CYAN}[Step 1/6] Checking system dependencies...${RESET}"
