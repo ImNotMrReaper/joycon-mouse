@@ -23,6 +23,33 @@ To keep Joy-Con Mouse fast, clean, and reliable, our project follows three core 
 
 ---
 
+## 🛠️ What You Need on Your Device (Prerequisites)
+
+Joy-Con Mouse requires **no external Python libraries** (`zero pip install`). To test and explore the code, here is what you will want on your computer:
+
+### 1. Python 3 (Required)
+* **Windows:**
+  * Download from [python.org/downloads](https://www.python.org/downloads/) (or search "Python 3.12" in the Microsoft Store).
+  * ⚠️ **CRITICAL FOR WINDOWS:** On the very first screen of the Python installer, check the box that says **"Add python.exe to PATH"** before clicking Install!
+* **Mac:**
+  * Download from [python.org/downloads](https://www.python.org/downloads/) or open Terminal and type `xcode-select --install`.
+* **Linux / WSL:**
+  * Pre-installed on almost all distros, or run: `sudo apt install python3`
+
+### 2. Git (Recommended for getting updates & switching branches)
+* **Windows:** Download from [git-scm.com/download/win](https://git-scm.com/download/win). (Click "Next" through the default installer options).
+* **Mac:** Type `git` in Terminal; if not installed, macOS will prompt you to install it automatically.
+* **Linux / WSL:** `sudo apt install git`
+
+### 3. PyCharm Community Edition (Optional, but great for viewing & editing)
+* Download **PyCharm Community Edition** (100% free and open-source) from [jetbrains.com/pycharm/download](https://www.jetbrains.com/pycharm/download/).
+* **How to open the project in PyCharm:**
+  1. Open PyCharm > Click **Open** > Select the `joycon-mouse` folder.
+  2. PyCharm will automatically detect your Python setup!
+  3. **Switching branches in 1 click:** Look at the bottom-right corner of PyCharm (it says `main`). Click it, select `origin/windows` or `origin/macos`, and click **Checkout**!
+
+---
+
 ## 🚀 How to Test on Your Operating System
 
 Joy-Con Mouse has dedicated branches tailored for each operating system:
@@ -64,7 +91,29 @@ Joy-Con Mouse has dedicated branches tailored for each operating system:
    * Go to **System Settings** > **Privacy & Security** > **Accessibility**.
    * Make sure **Terminal** (or your Python runner) is allowed to control your computer.
 4. **Launch the Driver:**
-   * Double-click **`run_macos.command`** (or open Terminal, navigate to the folder, and run `python3 joycon-mouse-macos.py`).
+    * Double-click **`run_macos.command`** (or open Terminal, navigate to the folder, and run `python3 joycon-mouse-macos.py`).
+
+---
+
+### 🐧 WSL Setup (Windows Subsystem for Linux on Windows 10/11)
+
+If you are running Ubuntu inside WSL on Windows:
+* **Recommended for 99% of Users:** Run natively on Windows instead! Switching to the `windows` branch and double-clicking `run_windows.bat` controls your entire Windows screen directly with zero setup.
+* **If testing inside WSL 2:**
+  1. WSL 2 runs inside a virtual machine and cannot access Windows Bluetooth by default. To attach a USB Bluetooth dongle or controller to WSL, use Microsoft's [usbipd-win](https://github.com/dorssel/usbipd-win):
+     ```powershell
+     # In Windows PowerShell (Administrator):
+     usbipd list
+     usbipd wsl attach --busid <your-bus-id>
+     ```
+  2. Inside WSL, enable kernel uinput:
+     ```bash
+     sudo modprobe uinput
+     ```
+  3. Run the driver:
+     ```bash
+     joycon-mouse
+     ```
 
 ---
 
@@ -92,6 +141,25 @@ You don't need to write code to change how your Joy-Con behaves. All user settin
 * **`sensitivity`**: Change `1.0` to `1.5` to make the cursor faster, or `0.8` to make it slower and more precise.
 * **`deadzone`**: If your analog stick has slight hardware drift, increase `0.08` to `0.12` or `0.15`.
 * **`disabled_modes`**: Don't need the terminal mode? Add `"terminal"` to disable it and keep only the mouse and media remote!
+
+---
+
+## 🤖 Using AI Coding Assistants (Cursor, Copilot, Claude, ChatGPT)?
+
+If you or your collaborators use AI coding assistants to explore or suggest changes to Joy-Con Mouse:
+
+> [!IMPORTANT]
+> **We have pre-configured AI guardrails in the repository root:**
+> - [**`AGENTS.md`**](AGENTS.md): Complete architectural blueprint, extension points, and non-negotiables.
+> - [**`.cursorrules`**](.cursorrules): Cursor IDE scope rules.
+> - [**`CLAUDE.md`**](CLAUDE.md): Claude Code instructions.
+> - [**`.github/copilot-instructions.md`**](.github/copilot-instructions.md): GitHub Copilot rules.
+
+**What these files instruct any AI tool:**
+1. **Never add external pip packages:** The project must stay 100% pure standard library.
+2. **Never build bloated GUIs:** No Electron, PyQt, or Tkinter wrappers.
+3. **Never hack shortcuts into the core loop:** All new actions must be created as modular mode plugins in `custom_modes/` inheriting from `BaseMode`.
+4. **Keep OS backends cleanly isolated:** Linux kernel code stays on `main`, Windows ctypes on `windows`, macOS CoreGraphics on `macos`.
 
 ---
 
