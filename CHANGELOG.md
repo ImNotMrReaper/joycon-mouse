@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0-preview] - 2026-09-04
+
+### 🌐 Multi-Platform Architecture & Preview Branches
+- **Multi-OS Branch Infrastructure**:
+  - `windows`: Dedicated branch with pure Python WinMM (`winmm.dll` `joyGetPosEx`) and Win32 User32 (`user32.dll` `mouse_event`, `keybd_event`) via standard library `ctypes`.
+  - `macos`: Dedicated branch with pure Python Apple CoreGraphics and `ApplicationServices.framework` via standard library `ctypes`.
+- **Windows 1-Click Installer & Uninstaller Suite**:
+  - `install.bat`: Interactive 1-click Windows installer with automatic Python 3.12 detection/winget installation, `%APPDATA%\joycon-mouse` configuration setup, and automatic Desktop & Start Menu shortcut generation.
+  - `uninstall.bat`: Clean 1-click Windows uninstaller that removes shortcuts and prompts for config cleanup.
+  - `run_windows.bat`: Double-clickable terminal runner for Windows 10/11.
+  - `build_exe.bat`: 1-click standalone executable (`JoyConMouse.exe`) packager via PyInstaller.
+- **macOS Double-Click Launcher**:
+  - `run_macos.command`: Double-clickable terminal runner for macOS Monterey, Ventura, Sonoma, and Sequoia.
+
+### 🤖 AI Agent Architecture & Scope Governance
+- **Repository-Level AI Rules**:
+  - `AGENTS.md`: Full architectural specification, project axioms, and non-negotiables for autonomous coding agents and LLM pair programmers.
+  - `.cursorrules`: Cursor IDE project scope rules.
+  - `CLAUDE.md`: Anthropic Claude Code guidelines.
+  - `.github/copilot-instructions.md`: GitHub Copilot instructions.
+- Strict enforcement of zero-pip dependency rule, prohibition of bloated GUI wrappers (Electron/Qt/Tkinter), and requirement that all new controller actions subclass `BaseMode` in `custom_modes/`.
+
+### 🐧 WSL (Windows Subsystem for Linux) Compatibility
+- Added `is_wsl_environment()` auto-detection in `joycon-mouse.py` and `install.sh`.
+- Context-aware guidance for forwarding USB/Bluetooth gamepads via `usbipd-win` and `sudo modprobe uinput`, or switching to the 1-click native `windows` branch for zero VM overhead.
+
+### 👥 Non-Coder Beta Testing Ecosystem
+- `TESTING_GUIDE.md`: Comprehensive guide with prerequisites (Python with PATH checkbox, Git, PyCharm Community Edition), hardware pairing instructions, no-code `config.json` customization, and review workflows.
+- `.github/ISSUE_TEMPLATE/tester_feedback.md`: 1-click GitHub Issue template with structured hardware checklists and ratings.
+- Added "Contributors & Community Testers" section to `README.md`.
+
+---
+
 ## [1.1.0] - 2026-09-03
 
 ### 🌟 Added
