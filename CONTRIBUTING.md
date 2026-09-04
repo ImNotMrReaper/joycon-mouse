@@ -39,6 +39,18 @@ python3 joycon-mouse.py -v
 
 ---
 
+## 👥 Non-Coder & Hardware Testing Contributions
+
+You do not need to know how to code to be an active contributor! We actively look for feedback from testers on:
+- Hardware ergonomics and button layouts
+- Sensitivity balance and deadzone tuning
+- Windows and macOS compatibility reports
+- Bluetooth reconnection quirks on different hardware
+
+Check out our [**Beta Tester Guide (`TESTING_GUIDE.md`)**](TESTING_GUIDE.md) and submit your feedback via our [Tester Feedback Form](https://github.com/ImNotMrReaper/joycon-mouse/issues/new?template=tester_feedback.md). All testers are credited in release notes and on our README contributor wall!
+
+---
+
 ## 🛠️ Contribution Guidelines
 
 1. **Zero External Dependencies**: Keep the core driver lightweight and dependent solely on the Python Standard Library (`fcntl`, `struct`, `select`, `math`, `os`, `threading`).
@@ -50,4 +62,4 @@ python3 joycon-mouse.py -v
    - Commit and push your changes.
    - Open a Pull Request against `main`.
 
-Thank you for making Joy-Con Mouse better for the entire Linux community!
+Thank you for making Joy-Con Mouse better for the entire open-source community!

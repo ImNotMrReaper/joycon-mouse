@@ -307,14 +307,44 @@ To use the optional local authentication / sudo injection system:
 
 ---
 
+## 🌐 Multi-Platform Support & Preview Branches
+
+Joy-Con Mouse is expanding across operating systems while preserving its signature zero-dependency architecture!
+
+| Operating System | Branch | Status | Setup Guide |
+| :--- | :--- | :--- | :--- |
+| **Linux (Wayland & X11)** | [`main`](https://github.com/ImNotMrReaper/joycon-mouse/tree/main) | **Production (v1.1.0+)** | [Quick Start](#-quick-start) |
+| **Windows 10 / 11** | [`windows`](https://github.com/ImNotMrReaper/joycon-mouse/tree/windows) | **Beta Preview** | [Testing Guide](TESTING_GUIDE.md#-windows-setup-windows-10--11) |
+| **macOS (Sonoma / Ventura / Monterey)** | [`macos`](https://github.com/ImNotMrReaper/joycon-mouse/tree/macos) | **Beta Preview** | [Testing Guide](TESTING_GUIDE.md#-mac-setup-macos-12-monterey-ventura-sonoma-sequoia) |
+
+> [!TIP]
+> **Want to help test Joy-Con Mouse on Windows or Mac?**  
+> You don't need to know how to code! Check out our friendly [**`TESTING_GUIDE.md`**](TESTING_GUIDE.md) to get started in under 2 minutes and be recognized as an official contributor.
+
+---
+
+## 👥 Contributors & Community Testers
+
+Special thanks to the amazing testers and contributors helping test hardware, discover edge cases, and refine controller ergonomics across platforms:
+
+| Contributor / Tester | Platform | Focus Area |
+| :--- | :--- | :--- |
+| **[@ImNotMrReaper](https://github.com/ImNotMrReaper)** | Linux / Core | Architecture, Linux evdev/uinput engine, modular plugins |
+| *(Community Beta Testers)* | Windows / Mac / Linux | Cross-platform hardware verification & UX feedback |
+
+Want to join our testing crew? Test the driver on your system and submit a report via [Beta Tester Feedback](https://github.com/ImNotMrReaper/joycon-mouse/issues/new?template=tester_feedback.md)!
+
+---
+
 ## 🤝 Contributing & Community Standards
 
 Contributions are warmly welcomed! Joy-Con Mouse was designed from the ground up to be modular and community-friendly. If you want to create a custom controller mode, enhance button mappings, or report hardware quirks:
+- Read [**`TESTING_GUIDE.md`**](TESTING_GUIDE.md) to learn how non-coders and testers can test and submit reviews.
 - Read [**`CUSTOM_MODES.md`**](CUSTOM_MODES.md) to see how to create and submit community modes.
 - Read the [Contributing Guide](CONTRIBUTING.md) for code style and standards.
 - Please review our [Code of Conduct](CODE_OF_CONDUCT.md).
 - Open an [Issue](https://github.com/ImNotMrReaper/joycon-mouse/issues) for feature requests or gamepad compatibility.
-- Submit a Pull Request to share your mode with other Linux users!
+- Submit a Pull Request to share your mode with other users!
 
 ---
 
@@ -322,4 +352,4 @@ Contributions are warmly welcomed! Joy-Con Mouse was designed from the ground up
 
 - **Releases & Changes**: See [**`CHANGELOG.md`**](CHANGELOG.md) for detailed version history.
 - **Security Policy**: See [**`SECURITY.md`**](SECURITY.md) for vulnerability disclosure guidelines.
-- **License**: Distributed under the [MIT License](LICENSE). Designed and crafted for the Linux and open-source gaming community.
+- **License**: Distributed under the [MIT License](LICENSE). Designed and crafted for the open-source gaming and accessibility community.
