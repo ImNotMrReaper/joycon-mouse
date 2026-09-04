@@ -72,6 +72,16 @@ if [ -f "/usr/local/bin/joycon-mouse" ] || [ -L "/usr/local/bin/joycon-mouse" ];
     REMOVED_CMD=true
 fi
 
+# Remove Shell Completions
+if [ -f "$HOME/.local/share/bash-completion/completions/joycon-mouse" ]; then
+    rm -f "$HOME/.local/share/bash-completion/completions/joycon-mouse"
+    echo -e "  ${GREEN}✓ Removed shell completion:${RESET} $HOME/.local/share/bash-completion/completions/joycon-mouse"
+fi
+if [ -f "/usr/share/bash-completion/completions/joycon-mouse" ]; then
+    sudo rm -f "/usr/share/bash-completion/completions/joycon-mouse" 2>/dev/null || true
+    echo -e "  ${GREEN}✓ Removed system shell completion.${RESET}"
+fi
+
 if [ "$REMOVED_CMD" = false ]; then
     echo -e "  ${DIM}No global command links found.${RESET}"
 fi

@@ -142,11 +142,11 @@ if [ "$TARGET_DIR" != "$SOURCE_DIR" ]; then
     echo -e "  Deploying files to $TARGET_DIR..."
     if [[ "$TARGET_DIR" =~ ^/opt/ ]] || [[ "$TARGET_DIR" =~ ^/usr/ ]]; then
         sudo mkdir -p "$TARGET_DIR"
-        sudo cp -r "$SOURCE_DIR/joycon-mouse.py" "$SOURCE_DIR/setup_wizard.py" "$SOURCE_DIR/setup.sh" "$SOURCE_DIR/uninstall.sh" "$SOURCE_DIR/test_buttons.py" "$SOURCE_DIR/modes" "$SOURCE_DIR/custom_modes" "$SOURCE_DIR/CUSTOM_MODES.md" "$SOURCE_DIR/README.md" "$SOURCE_DIR/LICENSE" "$TARGET_DIR/"
+        sudo cp -r "$SOURCE_DIR/joycon-mouse.py" "$SOURCE_DIR/setup_wizard.py" "$SOURCE_DIR/setup.sh" "$SOURCE_DIR/uninstall.sh" "$SOURCE_DIR/test_buttons.py" "$SOURCE_DIR/modes" "$SOURCE_DIR/custom_modes" "$SOURCE_DIR/completions" "$SOURCE_DIR/CUSTOM_MODES.md" "$SOURCE_DIR/README.md" "$SOURCE_DIR/LICENSE" "$TARGET_DIR/"
         sudo chmod +x "$TARGET_DIR"/*.py "$TARGET_DIR"/*.sh 2>/dev/null || true
     else
         mkdir -p "$TARGET_DIR"
-        cp -r "$SOURCE_DIR/joycon-mouse.py" "$SOURCE_DIR/setup_wizard.py" "$SOURCE_DIR/setup.sh" "$SOURCE_DIR/uninstall.sh" "$SOURCE_DIR/test_buttons.py" "$SOURCE_DIR/modes" "$SOURCE_DIR/custom_modes" "$SOURCE_DIR/CUSTOM_MODES.md" "$SOURCE_DIR/README.md" "$SOURCE_DIR/LICENSE" "$TARGET_DIR/"
+        cp -r "$SOURCE_DIR/joycon-mouse.py" "$SOURCE_DIR/setup_wizard.py" "$SOURCE_DIR/setup.sh" "$SOURCE_DIR/uninstall.sh" "$SOURCE_DIR/test_buttons.py" "$SOURCE_DIR/modes" "$SOURCE_DIR/custom_modes" "$SOURCE_DIR/completions" "$SOURCE_DIR/CUSTOM_MODES.md" "$SOURCE_DIR/README.md" "$SOURCE_DIR/LICENSE" "$TARGET_DIR/"
         chmod +x "$TARGET_DIR"/*.py "$TARGET_DIR"/*.sh 2>/dev/null || true
     fi
     echo -e "  ${GREEN}✓ Files successfully deployed.${RESET}"
@@ -155,8 +155,8 @@ else
     echo -e "  ${GREEN}✓ Using existing directory in-place.${RESET}"
 fi
 
-# 4. Global Command Setup (PATH)
-echo -e "\n${BOLD}${CYAN}[Step 4/6] Configuring global terminal command...${RESET}"
+# 4. Global Command Setup (PATH) & Shell Completion
+echo -e "\n${BOLD}${CYAN}[Step 4/6] Configuring global terminal command & completions...${RESET}"
 if [[ "$TARGET_DIR" =~ ^/opt/ ]] || [[ "$TARGET_DIR" =~ ^/usr/ ]]; then
     BIN_PATH="/usr/local/bin/joycon-mouse"
     echo -e "  Creating system executable launcher at $BIN_PATH (requires sudo)..."
@@ -167,6 +167,13 @@ exec python3 "$TARGET_DIR/joycon-mouse.py" "\$@"
 EOF
     sudo chmod +x "$BIN_PATH"
     echo -e "  ${GREEN}✓ Global command '$BIN_PATH' installed.${RESET}"
+
+    # Install system-wide bash completion
+    if [ -f "$SOURCE_DIR/completions/joycon-mouse" ]; then
+        sudo mkdir -p "/usr/share/bash-completion/completions"
+        sudo cp "$SOURCE_DIR/completions/joycon-mouse" "/usr/share/bash-completion/completions/joycon-mouse"
+        echo -e "  ${GREEN}✓ Shell completion & auto-suggestions installed.${RESET}"
+    fi
 else
     BIN_DIR="$HOME/.local/bin"
     BIN_PATH="$BIN_DIR/joycon-mouse"
@@ -178,6 +185,13 @@ exec python3 "$TARGET_DIR/joycon-mouse.py" "\$@"
 EOF
     chmod +x "$BIN_PATH"
     echo -e "  ${GREEN}✓ User command '$BIN_PATH' installed.${RESET}"
+
+    # Install user bash completion
+    if [ -f "$SOURCE_DIR/completions/joycon-mouse" ]; then
+        mkdir -p "$HOME/.local/share/bash-completion/completions"
+        cp "$SOURCE_DIR/completions/joycon-mouse" "$HOME/.local/share/bash-completion/completions/joycon-mouse"
+        echo -e "  ${GREEN}✓ Shell completion & auto-suggestions installed.${RESET}"
+    fi
 
     # Check if ~/.local/bin is in PATH
     if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then

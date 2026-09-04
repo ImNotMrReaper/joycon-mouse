@@ -1,0 +1,61 @@
+# bash completion for joycon-mouse                        -*- shell-script -*-
+
+_joycon_mouse_completions() {
+    local cur prev words cword
+    if declare -F _init_completion >/dev/null 2>&1; then
+        _init_completion || return
+    else
+        COMPREPLY=()
+        cur="${COMP_WORDS[COMP_CWORD]}"
+        prev="${COMP_WORDS[COMP_CWORD-1]}"
+    fi
+
+    local opts="--help -h --list -l --list-modes --show-mode --enable-mode --disable-mode --create-mode --profile -p --sensitivity -s --set-code --setup --uninstall --test-buttons --install-service --uninstall-service --log-file --no-rumble --no-grab --verbose -v --debug --no-reconnect"
+
+    local profiles="right_joycon left_joycon dual_joycon switch_pro playstation xbox generic_gamepad"
+
+    _get_modes() {
+        local raw_modes="air_mouse media_remote terminal 1 2 3 4 5"
+        local custom_dir="$HOME/.local/share/joycon-mouse/custom_modes"
+        if [ -d "$custom_dir" ]; then
+            for f in "$custom_dir"/*.py; do
+                [ -e "$f" ] || continue
+                local base
+                base=$(basename "$f" .py)
+                [ "$base" = "__init__" ] && continue
+                raw_modes="$raw_modes $base"
+            done
+        fi
+        echo "$raw_modes" | tr ' ' '\n' | awk '!seen[$0]++' | tr '\n' ' '
+    }
+
+    case "$prev" in
+        --show-mode|--enable-mode|--disable-mode|--list-modes)
+            COMPREPLY=( $(compgen -W "$(_get_modes)" -- "$cur") )
+            return 0
+            ;;
+        -p|--profile)
+            COMPREPLY=( $(compgen -W "$profiles" -- "$cur") )
+            return 0
+            ;;
+        --log-file)
+            if declare -F _filedir >/dev/null 2>&1; then
+                _filedir
+            else
+                COMPREPLY=( $(compgen -f -- "$cur") )
+            fi
+            return 0
+            ;;
+        -s|--sensitivity)
+            COMPREPLY=( $(compgen -W "0.5 0.8 1.0 1.2 1.5 2.0" -- "$cur") )
+            return 0
+            ;;
+    esac
+
+    if [[ "$cur" == -* ]]; then
+        COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+        return 0
+    fi
+}
+
+complete -F _joycon_mouse_completions joycon-mouse
