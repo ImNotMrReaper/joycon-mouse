@@ -18,6 +18,7 @@ from modes.base import (
     BaseMode,
     KEY_C, KEY_F, KEY_MUTE, KEY_VOLUMEDOWN, KEY_VOLUMEUP,
     KEY_LEFT, KEY_RIGHT, KEY_NEXTSONG, KEY_PLAYPAUSE, KEY_PREVIOUSSONG,
+    KEY_LEFTMETA, KEY_SYSRQ,
     PAD_BTN_NORTH, PAD_BTN_SOUTH, PAD_BTN_WEST, PAD_BTN_EAST,
     PAD_BTN_TL, PAD_BTN_TR, PAD_BTN_TL2, PAD_BTN_TR2,
     PAD_BTN_HOME, PAD_BTN_CAPTURE, PAD_BTN_PLUS, PAD_BTN_MINUS,
@@ -58,8 +59,8 @@ class MediaRemoteMode(BaseMode):
             bm = {
                 PAD_BTN_TL2: {"action": "key", "code": KEY_PLAYPAUSE, "desc": "ZL (Trigger) -> Play / Pause"},
                 PAD_BTN_TL: {"action": "key", "code": KEY_MUTE, "desc": "L (Bumper) -> Mute / Unmute"},
-                PAD_BTN_TR: {"action": "key", "code": KEY_VOLUMEDOWN, "desc": "Side SL -> Volume Down"},
-                PAD_BTN_TR2: {"action": "key", "code": KEY_VOLUMEUP, "desc": "Side SR -> Volume Up"},
+                PAD_BTN_TR: {"action": "key", "code": KEY_VOLUMEUP, "desc": "Side SL (Right) -> Volume Up"},
+                PAD_BTN_TR2: {"action": "key", "code": KEY_VOLUMEDOWN, "desc": "Side SR (Left) -> Volume Down"},
                 PAD_BTN_DPAD_UP: {"action": "key", "code": KEY_C, "desc": "Up -> Toggle Subtitles / Captions"},
                 PAD_BTN_DPAD_DOWN: {"action": "key", "code": KEY_LEFT, "desc": "Down -> Instant Rewind (-10s)"},
                 PAD_BTN_DPAD_LEFT: {"action": "key", "code": KEY_PREVIOUSSONG, "desc": "Left -> Previous Track"},
@@ -73,9 +74,9 @@ class MediaRemoteMode(BaseMode):
                 PAD_BTN_MINUS: {"action": "mode_cycle", "desc": "- -> Cycle Mode"},
             }
             for code in SL_GENERIC_CODES:
-                bm[code] = {"action": "key", "code": KEY_VOLUMEDOWN, "desc": "Side SL -> Volume Down"}
+                bm[code] = {"action": "key", "code": KEY_VOLUMEUP, "desc": "Side SL (Right) -> Volume Up"}
             for code in SR_GENERIC_CODES:
-                bm[code] = {"action": "key", "code": KEY_VOLUMEUP, "desc": "Side SR -> Volume Up"}
+                bm[code] = {"action": "key", "code": KEY_VOLUMEDOWN, "desc": "Side SR (Left) -> Volume Down"}
             return bm
 
         return {
@@ -90,8 +91,8 @@ class MediaRemoteMode(BaseMode):
             PAD_BTN_THUMBL: {"action": "key", "code": KEY_F, "desc": "L3 -> Fullscreen Toggle"},
             PAD_BTN_THUMBR: {"action": "mode_cycle", "desc": "R3 -> Cycle Mode"},
             PAD_BTN_PLUS: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode"},
-            PAD_BTN_HOME: {"action": "smart_home", "desc": "Guide / Home -> Tap: Super | Hold: Screenshot"},
-            PAD_BTN_CAPTURE: {"action": "smart_home", "desc": "Capture -> Tap: Super | Hold: Screenshot"},
+            PAD_BTN_HOME: {"action": "key", "code": KEY_LEFTMETA, "desc": "Guide / Home -> Home / Super Key (Instant)"},
+            PAD_BTN_CAPTURE: {"action": "key", "code": KEY_SYSRQ, "desc": "Capture / Share -> Instant Screenshot"},
         }
 
 

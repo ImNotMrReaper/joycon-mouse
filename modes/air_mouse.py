@@ -17,6 +17,7 @@ if _project_root not in sys.path:
 from modes.base import (
     BaseMode,
     KEY_ESC, KEY_ENTER, KEY_BACK, KEY_FORWARD,
+    KEY_LEFTMETA, KEY_SYSRQ,
     MOUSE_BTN_LEFT, MOUSE_BTN_RIGHT, MOUSE_BTN_MIDDLE,
     PAD_BTN_NORTH, PAD_BTN_SOUTH, PAD_BTN_WEST, PAD_BTN_EAST,
     PAD_BTN_TL, PAD_BTN_TR, PAD_BTN_TL2, PAD_BTN_TR2,
@@ -93,8 +94,8 @@ class AirMouseMode(BaseMode):
             PAD_BTN_THUMBL: {"action": "mouse_btn", "code": MOUSE_BTN_MIDDLE, "desc": "L3 -> Middle Click"},
             PAD_BTN_THUMBR: {"action": "mode_cycle", "desc": "R3 -> Cycle Mode"},
             PAD_BTN_PLUS: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode"},
-            PAD_BTN_HOME: {"action": "smart_home", "desc": "Guide / Home -> Tap: Super | Hold: Screenshot"},
-            PAD_BTN_CAPTURE: {"action": "smart_home", "desc": "Capture -> Tap: Super | Hold: Screenshot"},
+            PAD_BTN_HOME: {"action": "key", "code": KEY_LEFTMETA, "desc": "Guide / Home -> Home / Super Key (Instant)"},
+            PAD_BTN_CAPTURE: {"action": "key", "code": KEY_SYSRQ, "desc": "Capture / Share -> Instant Screenshot"},
         }
 
 

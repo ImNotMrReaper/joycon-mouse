@@ -67,6 +67,8 @@ if IS_WINDOWS:
     VK_SPACE = 0x20
     VK_ESCAPE = 0x1B
     VK_F5 = 0x74
+    VK_SNAPSHOT = 0x2C         # PrintScreen / Instant Screenshot
+    VK_LWIN = 0x5B             # Left Windows / Start / Overview Key
 else:
     class JOYINFOEX:
         pass
@@ -228,9 +230,18 @@ class WindowsJoyConDriver:
                 buttons = info.dwButtons
                 pressed = buttons & ~self.last_buttons
 
-                # Mode cycling button (Button 8 or 9: usually Plus / Minus or Home)
-                if pressed & (1 << 8) or pressed & (1 << 9) or pressed & (1 << 12):
+                # Mode cycling button (Button 8 or 9: usually Plus / Minus or Start)
+                if pressed & (1 << 8) or pressed & (1 << 9):
                     self.cycle_mode()
+
+                # Dedicated Screenshot Button (Button 13 / Share / Capture)
+                if pressed & (1 << 13):
+                    self.send_key(VK_SNAPSHOT)
+                    print(f"  {BOLD}{CYAN}📸 [Screenshot]{RESET} Instant PrintScreen triggered")
+
+                # Dedicated Home / Guide Button (Button 12 / Guide / Home / Xbox)
+                if pressed & (1 << 12):
+                    self.send_key(VK_LWIN)
 
                 curr_mode = self.modes[self.current_mode_index]
 

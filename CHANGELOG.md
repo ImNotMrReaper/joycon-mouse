@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.2] - 2026-09-05
+
+### 🎮 Universal Gamepads & Controller Ergonomics
+- **First-Class Universal Gamepad Support**:
+  - Expanded identity to **Joy-Cons & Gamepads / Universal Controllers** (Xbox Series X|S / One / 360, PlayStation DualSense / DualShock, Nintendo Switch Pro Controller, 8BitDo, Logitech).
+  - Added dedicated documentation in `README.md` and `TESTING_GUIDE.md` detailing dual analog sticks (left stick pointer, right stick continuous 2D scroll or track seeking), tactile D-pad navigation, and shoulder button ergonomics.
+  - Added comprehensive Comparative Hardware Matrix comparing single Joy-Cons (compact one-handed remotes) vs full-sized gamepads (two-handed desktop workstations).
+- **Left Joy-Con Volume Ergonomics Inversion**:
+  - Inverted rail volume assignments (`SL`/`SR`) for single Left Joy-Con in `modes/media_remote.py`: physical left button (`SR`) now turns volume down (`KEY_VOLUMEDOWN`) and physical right button (`SL`) turns volume up (`KEY_VOLUMEUP`), establishing natural volume orientation across all controllers.
+- **Dedicated Screenshot vs. Home Button Separation (0ms Latency)**:
+  - Disconnected 0.38s hold timer for full-sized controllers and paired Dual Joy-Cons across all modes (`modes/air_mouse.py`, `modes/media_remote.py`, `modes/terminal.py`, `custom_modes/gaming_hotkeys.py`, `custom_modes/presentation.py`, `modes/__init__.py`).
+  - Dedicated **Capture / Share** button immediately triggers instant screenshot (`KEY_SYSRQ` / `PrintScreen`) with 0ms delay and physical haptic rumble pulse confirmation.
+  - Dedicated **Guide / Home** button immediately triggers the `Super` / `Windows` key (`KEY_LEFTMETA`) with 0ms delay.
+  - Single Joy-Con mode retains smart dual-action hold timer for controllers with only a single system button.
+
+---
+
 ## [1.2.1] - 2026-09-04
 
 ### ⚡ Universal 1-Liner Web Installers (Windows, Linux, macOS)

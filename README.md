@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎮 Joy-Con Mouse & Universal Remote for Windows
+# 🎮 Joy-Cons & Gamepads | Universal Controller Mouse for Windows
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -9,11 +9,11 @@
 [![Dependencies](https://img.shields.io/badge/dependencies-zero%20external-success.svg)](https://github.com/ImNotMrReaper/joycon-mouse/tree/windows)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-**Transform Nintendo Switch Joy-Cons into a wireless precision desktop mouse, couch media remote, and presentation clicker on Windows 10 & 11 with zero external pip dependencies.**
+**Transform Nintendo Switch Joy-Cons and standard gamepads (Xbox, PlayStation, Switch Pro, 8BitDo) into a wireless precision desktop mouse, couch media remote, and presentation clicker on Windows 10 & 11 with zero external pip dependencies.**
 
 <br/>
 
-<img src="assets/joycon_banner.svg" alt="Joy-Con Mouse Banner" width="100%">
+<img src="assets/joycon_banner.svg" alt="Joy-Con & Gamepad Mouse Banner" width="100%">
 
 </div>
 
@@ -32,6 +32,9 @@
   - `winmm.dll` (`joyGetPosEx`) for direct high-speed hardware gamepad polling.
   - `user32.dll` (`mouse_event`, `keybd_event`) for buttery-smooth cursor movement, clicks, and media keys.
   - Requires **zero pip installs**, virtual environments, or compilation tools.
+- **Universal Gamepad & Joy-Con Support**: Plug-and-play support for Joy-Con (R), Joy-Con (L), paired controllers, and full-sized gamepads (Xbox, PlayStation DualSense/DualShock, Switch Pro, 8BitDo).
+- **Dedicated Instant Screenshot & Windows Keys**: Dedicated Share/Capture button triggers instant `PrintScreen` (0ms delay) and Guide/Xbox button triggers instant Windows Start Menu.
+- **Ergonomic Volume Orientation**: Natural left = Down, right = Up volume controls across all controllers.
 - **⚡ 1-Liner PowerShell Installer**: Install and configure everything with a single paste in Windows PowerShell.
 - **1-Click Local Batch Suite**: Double-click `install.bat` to automatically set up shortcuts, `run_windows.bat` to launch, and `uninstall.bat` to clean up.
 - **Portable Executable Builder (`build_exe.bat`)**: Package the driver into a standalone portable `JoyConMouse.exe` in 1 click.
