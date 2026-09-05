@@ -407,6 +407,7 @@ Special thanks to the amazing testers and contributors helping test hardware, di
 | Contributor / Tester | Platform | Focus Area |
 | :--- | :--- | :--- |
 | **[@ImNotMrReaper](https://github.com/ImNotMrReaper)** | Linux / Core | Architecture, Linux evdev/uinput engine, modular plugins |
+| **[@Senpai59](https://github.com/Senpai59)** | Windows | Windows Lead Tester & Contributor (`windows` branch development & bugfixing) |
 | *(Community Beta Testers)* | Windows / Mac / Linux | Cross-platform hardware verification & UX feedback |
 
 Want to join our testing crew? Test the driver on your system and submit a report via [Beta Tester Feedback](https://github.com/ImNotMrReaper/joycon-mouse/issues/new?template=tester_feedback.md)!
