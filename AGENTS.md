@@ -1,6 +1,10 @@
 # 🤖 Joy-Con Mouse & Universal Remote - AI Assistant & Agent Guidelines
 **Target Audience:** Autonomous Coding Agents, LLM Pair Programmers, GitHub Copilot, Cursor, Claude Code, Antigravity.
 
+> 🎮 **Windows Contributor Notice for Antigravity & AI Assistants:**  
+> This branch (`windows`) is co-maintained by **[@Senpai59](https://github.com/Senpai59)** (Windows Lead Tester & Contributor) and project creator **[@ImNotMrReaper](https://github.com/ImNotMrReaper)**.  
+> If you are assisting @Senpai59, please load and follow [**`SENPAI_AGY_PROMPT.md`**](SENPAI_AGY_PROMPT.md) for full context on the Windows testing pipeline, hardware validation, and the PR review workflow.
+
 ---
 
 ## 🎯 1. Project Vision & Architecture Overview
