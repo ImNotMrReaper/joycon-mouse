@@ -17,6 +17,7 @@ if _project_root not in sys.path:
 from modes.base import (
     BaseMode,
     KEY_ESC, KEY_TAB, KEY_SPACE, KEY_ENTER,
+    KEY_LEFTMETA, KEY_SYSRQ,
     PAD_BTN_NORTH, PAD_BTN_SOUTH, PAD_BTN_WEST, PAD_BTN_EAST,
     PAD_BTN_TL, PAD_BTN_TR, PAD_BTN_TL2, PAD_BTN_TR2,
     PAD_BTN_HOME, PAD_BTN_CAPTURE, PAD_BTN_PLUS, PAD_BTN_MINUS,
@@ -85,7 +86,8 @@ class GamingHotkeysMode(BaseMode):
             PAD_BTN_EAST: {"action": "key", "code": KEY_F5, "desc": "B / Circle -> Quick Save (F5)"},
             PAD_BTN_SOUTH: {"action": "key", "code": KEY_F9, "desc": "A / Cross -> Quick Load (F9)"},
             PAD_BTN_PLUS: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode"},
-            PAD_BTN_HOME: {"action": "smart_home", "desc": "Guide / Home -> Tap: Super | Hold: Screenshot"},
+            PAD_BTN_HOME: {"action": "key", "code": KEY_LEFTMETA, "desc": "Guide / Home -> Home / Super Key (Instant)"},
+            PAD_BTN_CAPTURE: {"action": "key", "code": KEY_SYSRQ, "desc": "Capture / Share -> Instant Screenshot"},
         }
 
 

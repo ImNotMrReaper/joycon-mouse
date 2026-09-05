@@ -18,6 +18,7 @@ from modes.base import (
     BaseMode,
     KEY_ESC, KEY_SPACE, KEY_BACKSPACE, KEY_B, KEY_F5, KEY_LEFTSHIFT,
     KEY_PAGEUP, KEY_PAGEDOWN,
+    KEY_LEFTMETA, KEY_SYSRQ,
     PAD_BTN_NORTH, PAD_BTN_SOUTH, PAD_BTN_WEST, PAD_BTN_EAST,
     PAD_BTN_TL, PAD_BTN_TR, PAD_BTN_TL2, PAD_BTN_TR2,
     PAD_BTN_HOME, PAD_BTN_CAPTURE, PAD_BTN_PLUS, PAD_BTN_MINUS,
@@ -72,7 +73,8 @@ class PresentationMode(BaseMode):
             PAD_BTN_WEST: {"action": "key", "code": KEY_B, "desc": "X / Square -> Black Screen (B)"},
             PAD_BTN_THUMBL: {"action": "key", "code": KEY_ESC, "desc": "L3 -> Exit Slideshow (Esc)"},
             PAD_BTN_PLUS: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode"},
-            PAD_BTN_HOME: {"action": "smart_home", "desc": "Guide / Home -> Tap: Super | Hold: Screenshot"},
+            PAD_BTN_HOME: {"action": "key", "code": KEY_LEFTMETA, "desc": "Guide / Home -> Home / Super Key (Instant)"},
+            PAD_BTN_CAPTURE: {"action": "key", "code": KEY_SYSRQ, "desc": "Capture / Share -> Instant Screenshot"},
         }
 
 

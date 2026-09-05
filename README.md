@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎮 Joy-Con Mouse & Universal Media Remote
+# 🎮 Joy-Cons & Gamepads | Universal Controller Mouse & Remote
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -10,11 +10,11 @@
 [![Dependencies](https://img.shields.io/badge/dependencies-zero%20external-success.svg)](https://github.com/ImNotMrReaper/joycon-mouse)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-**Transform Nintendo Switch Joy-Cons into a wireless precision desktop mouse, couch media remote, and presentation clicker with zero external dependencies.**
+**Transform Nintendo Switch Joy-Cons and universal gamepads (Xbox, PlayStation DualSense/DualShock, Switch Pro Controller, 8BitDo) into a wireless precision desktop mouse, couch media remote, and presentation clicker with zero external dependencies.**
 
 <br/>
 
-<img src="assets/joycon_banner.svg" alt="Joy-Con Mouse for Linux Banner" width="100%">
+<img src="assets/joycon_banner.svg" alt="Joy-Con & Gamepad Mouse Banner" width="100%">
 
 </div>
 
@@ -28,8 +28,11 @@
 
 ## 🌟 Key Features
 
-- **Zero External Dependencies**: Pure Python using standard library (`fcntl`, `struct`, `select`, `math`, `os`, `threading`, `importlib`). No pip dependencies or wrappers.
-- **Physical Haptic / Rumble Feedback**: Joy-Con provides physical vibration clicks when switching modes, capturing screenshots, or unlocking credentials.
+- **Zero External Dependencies**: Pure Python using standard library (`fcntl`, `struct`, `select`, `math`, `os`, `threading`, `importlib`). No pip dependencies or bloated wrappers.
+- **Universal Controller & Gamepad Support**: Plug-and-play support for single Joy-Cons, paired Dual Joy-Cons, and full-sized gamepads (Xbox Series X|S / One / 360, PlayStation DualSense / DualShock, Nintendo Switch Pro Controller, 8BitDo).
+- **Physical Haptic / Rumble Feedback**: Joy-Con and gamepads provide physical vibration clicks when switching modes, capturing screenshots, or unlocking credentials.
+- **Dedicated Screenshot vs. Home Separation**: Instant 0ms screenshot on dedicated Capture/Share buttons and instant Home/Super key on Guide/Home buttons for full controllers, with smart dual-action hold preserved on single Joy-Cons.
+- **Ergonomic Volume Orientation**: Natural left = Volume Down, right = Volume Up across Left Joy-Con rail, Right Joy-Con rail, and D-pad.
 - **Universal Modular Plugin Engine**: Fully decoupled mode architecture. Every mode is a standalone, hot-discoverable Python plugin.
 - **Built-in & Community Modes**:
   1. **Desktop Mouse** ([`modes/air_mouse.py`](modes/air_mouse.py)): Precision analog stick pointer with hybrid acceleration curve ($x^{1.6}$) and zero drift.
@@ -44,9 +47,6 @@
 - **User Configuration File**: Persistent settings in `~/.config/joycon-mouse/config.json` for sensitivity, speeds, deadzones, rumble, and disabled modes.
 - **Auto-Dormant Game Detection**: Non-blocking background thread yields hardware grabbing (`EVIOCGRAB`) when Steam games or emulators launch.
 - **Dual Joy-Con Pairing**: Detects simultaneously connected Left and Right Joy-Cons and prompts to bind them into a single unified desktop controller.
-- **Smart Dual-Action Buttons**:
-  - **Tap** Home / Capture (< 0.38s): Emits `Super` / `Windows` key (Application Overview).
-  - **Hold** Home / Capture (≥ 0.38s): Emits `PrintScreen` (Instant Screenshot with haptic double-click).
 
 ---
 
@@ -218,40 +218,82 @@ Customize speeds, deadzones, and features in `~/.config/joycon-mouse/config.json
 
 ---
 
-## 🎮 Controller Layouts & Modes
+## 🎮 Universal Gamepads & Full-Sized Controllers (Xbox, PlayStation, Switch Pro, 8BitDo)
 
-Cycle through active modes anytime by pressing **`+`** (Right Joy-Con) or **`-`** (Left Joy-Con).
+While Joy-Cons offer an ultra-compact split form factor ideal for one-handed couch navigation and presentation remotes, **Joy-Con Mouse natively supports full-sized dual-stick gamepads** (Xbox Series X|S, Xbox One / 360, PlayStation DualSense / DualShock 4, Nintendo Switch Pro Controller, 8BitDo, Logitech, and Steam Deck controllers).
+
+### 🕹️ Why Gamepads Differ from Single Joy-Cons
+Full-sized gamepads provide significant ergonomic and hardware capabilities compared to a single split Joy-Con:
+* **Dual Full Analog Sticks:** Instead of a single thumbstick, full gamepads deliver independent dual-axis control:
+  * **Left Analog Stick:** Drives high-precision cursor movement with calibrated acceleration ($x^{1.6}$) and configurable deadzones.
+  * **Right Analog Stick:** Drives continuous smooth 2D scrolling (vertical and horizontal in Desktop Mouse mode) or continuous media seeking ($\pm 5\text{s}$ scrubbing in Media Remote mode).
+* **Dedicated Screenshot vs. Home Buttons (0ms Delay):**
+  * On single Joy-Cons, there is physically only one system button (`Home` on Right, `Capture` on Left), requiring a 0.38s hold timer to distinguish between opening the Application Overview (tap) and taking a screenshot (hold).
+  * **On Universal Gamepads & Dual Joy-Cons:** Both functions are separated with **zero delay (0ms latency)**:
+    * **Dedicated Capture / Share Button:** Immediately fires an instant screenshot (`PrintScreen` / `KEY_SYSRQ`) with physical haptic rumble confirmation. No holding required!
+    * **Dedicated Guide / Home Button:** Immediately fires the `Super` / `Windows` key (`KEY_LEFTMETA`) to bring up your desktop dashboard, Start Menu, or GNOME Overview with 0ms delay.
+* **Tactile Stepped D-Pad Navigation:**
+  * While the analog sticks offer fluid analog movement, the 4-way digital D-pad provides tactile, discrete stepping:
+    * **Media Remote:** D-pad `Up` / `Down` steps volume cleanly without accidental skips; `Left` / `Right` steps tracks.
+    * **Terminal Mode:** D-pad `Up` / `Down` scrolls shell command history; `Left` / `Right` steps terminal cursor position.
+* **Shoulder Ergonomics & Triggers:**
+  * Ergonomic dual triggers (`LT`/`L2` and `RT`/`R2`) and bumpers (`LB`/`L1` and `RB`/`R1`) allow natural one-finger mouse clicks, quick-tabs, and media playback control without hand strain.
+
+### 📊 Comparative Matrix: Single Joy-Con vs. Full Gamepad / Dual Joy-Cons
+
+| Hardware Feature | Single Joy-Con (One-Hand Remote) | Universal Gamepad / Dual Joy-Cons |
+| :--- | :--- | :--- |
+| **Primary Use Case** | Bed/couch remote, media clicker, presentation presenter | Full desktop replacement, workstation navigation, terminal shell |
+| **Analog Sticks** | Single stick (cursor movement OR track seeking) | **Dual sticks** (Left: Cursor; Right: Continuous Scroll / Seek) |
+| **Screenshot Trigger** | Hold Home / Capture button (≥ 0.38s) | **Instant Capture / Share button (0ms latency)** |
+| **Home / Overview** | Tap Home / Capture button (< 0.38s) | **Instant Guide / Home / PS button (0ms latency)** |
+| **Volume Adjustment** | Side rail buttons (`SL` / `SR`) | **Tactile D-Pad Up / Down** + triggers |
+| **Track Scrubbing** | Face buttons (`Left`/`Right` or `Y`/`A`) | Right Stick Tilt or D-Pad (`Left`/`Right`) |
+| **Ergonomic Profile** | Ultra-lightweight (49g), discrete, fits in pocket | Two-handed balanced grip with full palm support |
+| **Supported Devices** | Nintendo Switch Joy-Con (L), Joy-Con (R) | Xbox One / Series, PS4 / PS5, Switch Pro, 8BitDo, Dual Joy-Cons |
+
+---
+
+## 🕹️ Mode Layouts & Button Mappings
+
+Cycle through active modes anytime by pressing **`+`** (Right Joy-Con), **`-`** (Left Joy-Con), or **`Start / +`** on Universal Gamepads.
 
 ### Mode 1: Desktop Mouse
-| Button | Right Joy-Con | Left Joy-Con | Action |
-| :--- | :--- | :--- | :--- |
-| **Trigger** | `ZR` | `ZL` | Left Mouse Click |
-| **Bumper** | `R` | `L` | Right Mouse Click |
-| **Side Rail SL** | `SL` | `SL` | Escape (`ESC`) |
-| **Side Rail SR** | `SR` | `SR` | Enter / Open (`ENTER`) |
-| **Face Up** | `X` | `Up` | Scroll Up |
-| **Face Down** | `B` | `Down` | Scroll Down |
-| **Face Left** | `Y` | `Left` | Browser Back |
-| **Face Right** | `A` | `Right` | Browser Forward |
-| **Stick Click** | `R3` | `L3` | Middle Mouse Click |
-| **Home / Capture** | `Home` | `Capture` | Tap: Super / Win | Hold: Screenshot |
+| Button | Right Joy-Con | Left Joy-Con | Universal Controller (Xbox / PS / Pro) | Action |
+| :--- | :--- | :--- | :--- | :--- |
+| **Primary Trigger** | `ZR` | `ZL` | `RT / R2` | **Left Mouse Click** |
+| **Primary Bumper** | `R` | `L` | `RB / R1` | **Right Mouse Click** |
+| **Secondary Trigger** | — | — | `LT / L2` | **Middle Mouse Click** |
+| **Side Rail SL** | `SL` | `SL` | `B / Circle` | **Escape (`ESC`)** |
+| **Side Rail SR** | `SR` | `SR` | `A / Cross` | **Enter / Open (`ENTER`)** |
+| **Face Up / Scroll Up** | `X` | `Up` | `Y / Triangle` or `D-Pad Up` | **Scroll Up** |
+| **Face Down / Scroll Down** | `B` | `Down` | `X / Square` or `D-Pad Down` | **Scroll Down** |
+| **Face Left / Back** | `Y` | `Left` | `D-Pad Left` | **Browser Back** |
+| **Face Right / Forward** | `A` | `Right` | `D-Pad Right` | **Browser Forward** |
+| **Left Stick Click** | `R3` | `L3` | `L3` | **Middle Mouse Click** |
+| **Right Stick Click** | — | — | `R3` | **Cycle Controller Mode** |
+| **Dedicated Screenshot** | — | — | `Capture / Share` | **Instant Screenshot (0ms)** |
+| **Dedicated Home / Guide**| `Home` (Hold: Screen) | `Capture` (Hold: Screen) | `Guide / Home / PS` | **Instant Super / Home Key (0ms)** |
 
 ### Mode 2: Universal Media Remote
-| Button | Right Joy-Con | Left Joy-Con | Action |
-| :--- | :--- | :--- | :--- |
-| **Trigger** | `ZR` | `ZL` | Play / Pause |
-| **Bumper** | `R` | `L` | Mute / Unmute Audio |
-| **Side Rail SL** | `SL` | `SL` | Volume Down |
-| **Side Rail SR** | `SR` | `SR` | Volume Up |
-| **Face Up** | `X` | `Up` | Toggle Subtitles / Captions (`C`) |
-| **Face Down** | `B` | `Down` | Instant Rewind (`-10s`) |
-| **Face Left** | `Y` | `Left` | Previous Track |
-| **Face Right** | `A` | `Right` | Next Track |
-| **Stick Click** | `R3` | `L3` | Fullscreen Toggle (`F`) |
-| **Stick Left / Right**| Tilt Left / Right | Tilt Left / Right | Continuous Seek ($\pm 5	ext{s}$) |
+| Button | Right Joy-Con | Left Joy-Con | Universal Controller (Xbox / PS / Pro) | Action |
+| :--- | :--- | :--- | :--- | :--- |
+| **Trigger** | `ZR` | `ZL` | `RT / R2` | **Play / Pause** |
+| **Bumper** | `R` | `L` | `RB / R1` | **Mute / Unmute Audio** |
+| **Side Rail SL** | `SL` (Vol Down) | `SL` (Physical Right) | `D-Pad Up` | **Volume Up** (Left Joy-Con & Pad) / Down (Right) |
+| **Side Rail SR** | `SR` (Vol Up) | `SR` (Physical Left) | `D-Pad Down` | **Volume Down** (Left Joy-Con & Pad) / Up (Right) |
+| **Face Up** | `X` | `Up` | `Y / Triangle` | **Toggle Subtitles / Captions (`C`)** |
+| **Face Down** | `B` | `Down` | `A / Cross` | **Instant Rewind (`-10s`)** |
+| **Face Left** | `Y` | `Left` | `D-Pad Left` | **Previous Track / Replay** |
+| **Face Right** | `A` | `Right` | `D-Pad Right` | **Next Track / Skip** |
+| **Stick Click** | `R3` | `L3` | `L3` | **Fullscreen Toggle (`F`)** |
+| **Right Stick Click** | — | — | `R3` | **Cycle Controller Mode** |
+| **Analog Stick Tilt** | Tilt Left / Right | Tilt Left / Right | Right Stick Tilt | **Continuous Seek ($\pm 5\text{s}$)** |
+| **Dedicated Screenshot** | — | — | `Capture / Share` | **Instant Screenshot (0ms)** |
+| **Dedicated Home / Guide**| `Home` (Hold: Screen) | `Capture` (Hold: Screen) | `Guide / Home / PS` | **Instant Super / Home Key (0ms)** |
 
 ### Mode 3: Interactive Terminal Controller
-| Button | Right Joy-Con | Left Joy-Con | Universal Controller | Action |
+| Button | Right Joy-Con | Left Joy-Con | Universal Controller (Xbox / PS / Pro) | Action |
 | :--- | :--- | :--- | :--- | :--- |
 | **Primary Trigger** | `ZR` | `ZL` | `RT / R2` | **Enter / Submit Command** |
 | **Bumper** | `R` | `L` | `RB / R1` | **Tab Auto-Complete** |
@@ -261,33 +303,38 @@ Cycle through active modes anytime by pressing **`+`** (Right Joy-Con) or **`-`*
 | **Face Down** | `B` | `Down` | `B / Circle` | **Backspace / Erase Character** |
 | **Face Left** | `Y` | `Left` | `D-Pad Down` | **Next Command (History Down)** |
 | **Face Right** | `A` | `Right` | `A / Cross` | **Enter / Confirm Prompt** |
-| **Stick Click** | `R3` | `L3` | `X / Square` | **Clear Screen (`Ctrl+L`)** |
+| **Stick Click** | `R3` | `L3` | `L3` | **Suspend Job (`Ctrl+Z`)** |
+| **Right Stick Click** | — | — | `R3` | **EOF / Exit (`Ctrl+D`)** |
 | **Analog Stick Tilt** | Stick Up/Down | Stick Up/Down | Stick Up/Down | **Smooth Terminal Buffer Scroll** |
-| **Home / Capture** | `Home` | `Capture` | `Guide` | Tap: Super / Win \| Hold: Screenshot |
-| **Plus / Minus** | `+` | `-` | `+ / Start` | **Cycle Controller Mode** |
+| **Dedicated Screenshot** | — | — | `Capture / Share` | **Instant Screenshot (0ms)** |
+| **Dedicated Home / Guide**| `Home` (Hold: Screen) | `Capture` (Hold: Screen) | `Guide / Home / PS` | **Instant Super / Home Key (0ms)** |
 
 ### Mode 4: Gaming & Macro Hotkeys (Community Mode)
-| Button | Right Joy-Con | Left Joy-Con | Action |
-| :--- | :--- | :--- | :--- |
-| **Trigger** | `ZR` | `ZL` | Jump / Action (`Space`) |
-| **Bumper** | `R` | `L` | Target / Tab (`Tab`) |
-| **Side Rail SL** | `SL` | `SL` | User Macro 1 (`F13`) |
-| **Side Rail SR** | `SR` | `SR` | User Macro 2 (`F14`) |
-| **Face Up** | `X` | `Up` | Inventory (`I`) |
-| **Face Down** | `B` | `Down` | Quick Load (`F9`) |
-| **Face Left** | `Y` | `Left` | Map (`M`) |
-| **Face Right** | `A` | `Right` | Quick Save (`F5`) |
-| **Stick Click** | `R3` | `L3` | Character Sheet (`C`) |
+| Button | Right Joy-Con | Left Joy-Con | Universal Controller (Xbox / PS / Pro) | Action |
+| :--- | :--- | :--- | :--- | :--- |
+| **Trigger** | `ZR` | `ZL` | `RT / R2` | **Jump / Action (`Space`)** |
+| **Bumper** | `R` | `L` | `LT / L2` | **Target / Tab (`Tab`)** |
+| **Side Rail SL** | `SL` | `SL` | — | **User Macro 1 (`F13`)** |
+| **Side Rail SR** | `SR` | `SR` | — | **User Macro 2 (`F14`)** |
+| **Face Up** | `X` | `Up` | `Y / Triangle` | **Inventory (`I`)** |
+| **Face Down** | `B` | `Down` | `A / Cross` | **Quick Load (`F9`)** |
+| **Face Left** | `Y` | `Left` | `X / Square` | **Map (`M`)** |
+| **Face Right** | `A` | `Right` | `B / Circle` | **Quick Save (`F5`)** |
+| **Stick Click** | `R3` | `L3` | — | **Character Sheet (`C`)** |
+| **Dedicated Screenshot** | — | — | `Capture / Share` | **Instant Screenshot (0ms)** |
+| **Dedicated Home / Guide**| `Home` (Hold: Screen) | `Capture` (Hold: Screen) | `Guide / Home / PS` | **Instant Super / Home Key (0ms)** |
 
 ### Mode 5: Wireless Presentation Clicker (Community Mode)
-| Button | Right Joy-Con | Left Joy-Con | Action |
-| :--- | :--- | :--- | :--- |
-| **Trigger** | `ZR` | `ZL` | Next Slide (`Space`) |
-| **Bumper** | `R` | `L` | Previous Slide (`Backspace`) |
-| **Face Up** | `X` | `Up` | Start Slideshow (`F5`) |
-| **Face Down** | `B` | `Down` | Black Screen (`B`) |
-| **Face Left / Right** | `Y` / `A` | `Left` / `Right` | Prev / Next Slide |
-| **Stick Click** | `R3` | `L3` | Exit Slideshow (`Esc`) |
+| Button | Right Joy-Con | Left Joy-Con | Universal Controller (Xbox / PS / Pro) | Action |
+| :--- | :--- | :--- | :--- | :--- |
+| **Trigger** | `ZR` | `ZL` | `RT / R2` | **Next Slide (`Space`)** |
+| **Bumper** | `R` | `L` | `LT / L2` | **Previous Slide (`Backspace`)** |
+| **Face Up** | `X` | `Up` | `Y / Triangle` | **Start Slideshow (`F5`)** |
+| **Face Down** | `B` | `Down` | `X / Square` | **Black Screen (`B`)** |
+| **Face Left / Right** | `Y` / `A` | `Left` / `Right` | `B` / `A` | **Prev / Next Slide** |
+| **Stick Click** | `R3` | `L3` | `L3` | **Exit Slideshow (`Esc`)** |
+| **Dedicated Screenshot** | — | — | `Capture / Share` | **Instant Screenshot (0ms)** |
+| **Dedicated Home / Guide**| `Home` (Hold: Screen) | `Capture` (Hold: Screen) | `Guide / Home / PS` | **Instant Super / Home Key (0ms)** |
 
 ---
 

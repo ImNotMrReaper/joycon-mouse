@@ -824,6 +824,10 @@ def run_controller_session(
 
                                 elif action_type in ("mouse_btn", "key"):
                                     uinput.emit_key(target_code, value)
+                                    if target_code == KEY_CODE_SYSRQ and value == 1:
+                                        if rumble:
+                                            rumble.screenshot()
+                                        log.log("[Screenshot Button] Instant Screenshot (PrintScreen)", level="INFO")
 
                                 elif action_type == "scroll":
                                     if value == 1:
