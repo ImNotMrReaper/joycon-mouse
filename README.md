@@ -90,16 +90,15 @@ Paste the 1-liner for your operating system into your terminal:
 curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.sh | bash
 ```
 
-#### 🪟 Windows (PowerShell on Windows 10 & 11)
+#### 🪟 Windows (PowerShell on Windows 10 & 11) — [`windows` branch]
 ```powershell
-irm https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/windows/install.ps1 | iex
 ```
 
-#### 🍎 macOS (Terminal)
+#### 🍎 macOS (Terminal) — [`macos` branch]
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/macos/install.sh | bash
 ```
-*(Tip: On macOS, the universal `curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.sh | bash` command also automatically detects macOS!)*
 
 ---
 
@@ -108,7 +107,7 @@ curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/macos/in
 #### Option A: 1-Liner in PowerShell (Fastest)
 Open PowerShell (Win + X > Terminal or PowerShell) and run:
 ```powershell
-irm https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/windows/install.ps1 | iex
 ```
 *Auto-detects Python (installs Python 3.12 via winget if missing), creates Desktop & Start Menu shortcuts, and adds `joycon-mouse` to system PATH.*
 
