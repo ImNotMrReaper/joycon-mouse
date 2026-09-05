@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎮 Joy-Con Mouse & Universal Remote for macOS
+# 🎮 Joy-Cons & Gamepads | Universal Controller Mouse for macOS
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -9,11 +9,11 @@
 [![Dependencies](https://img.shields.io/badge/dependencies-zero%20external-success.svg)](https://github.com/ImNotMrReaper/joycon-mouse/tree/macos)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-**Transform Nintendo Switch Joy-Cons into a wireless precision desktop mouse, couch media remote, and presentation clicker on Apple macOS with zero external dependencies.**
+**Transform Nintendo Switch Joy-Cons and standard gamepads (Xbox, PlayStation DualSense/DualShock, Switch Pro, 8BitDo) into a wireless precision desktop mouse, couch media remote, and presentation clicker on Apple macOS with zero external dependencies.**
 
 <br/>
 
-<img src="assets/joycon_banner.svg" alt="Joy-Con Mouse Banner" width="100%">
+<img src="assets/joycon_banner.svg" alt="Joy-Con & Gamepad Mouse Banner" width="100%">
 
 </div>
 
@@ -31,6 +31,9 @@
 - **Zero External Dependencies**: Pure Python standard library utilizing native Apple `CoreGraphics` & `ApplicationServices.framework` via standard library `ctypes`:
   - Direct hardware cursor movement using `CGEventCreateMouseEvent` and `CGEventPost`.
   - Zero pip dependencies, zero compilation steps, and zero background daemon bloat.
+- **Universal Gamepad & Joy-Con Support**: Plug-and-play support for single Joy-Cons, paired Dual Joy-Cons, and full-sized gamepads (Xbox Series X|S / One, PlayStation DualSense / DualShock, Switch Pro, 8BitDo).
+- **Dedicated Screenshot & Mission Control**: Dedicated Share/Capture button triggers instant screenshot and Guide/Home button triggers Mission Control / Launchpad.
+- **Ergonomic Volume Orientation**: Natural left = Down, right = Up volume controls across all controllers.
 - **⚡ 1-Liner Quick Install**: Run one command in Terminal to install the driver, create a Desktop launcher, and configure global commands.
 - **Desktop Double-Click Launcher**: Generates `Joy-Con Mouse.command` on your Desktop so you can start the driver without using a terminal.
 - **Terminal CLI Command**: Launch anytime by typing `joycon-mouse` in your Terminal.

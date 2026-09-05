@@ -139,6 +139,21 @@ If you are running Ubuntu inside WSL on Windows:
 
 ---
 
+### 🎮 Full-Sized Gamepads & Controllers (Xbox, PlayStation, Switch Pro, 8BitDo)
+
+Testing with a standard full-sized controller instead of a single Joy-Con?
+1. **Pair via Bluetooth or Plug in via USB:**
+   * **Xbox Wireless Controller:** Hold the round pairing button on top until the Xbox button flashes rapidly, then connect in Bluetooth settings (or plug in with USB-C).
+   * **PlayStation DualSense / DualShock 4:** Hold the `Create` / `Share` button + `PS Button` simultaneously until lightbar pulses, then connect in Bluetooth settings.
+   * **Switch Pro Controller / 8BitDo:** Hold top sync button until LEDs cycle, then connect in Bluetooth settings.
+2. **Key Capabilities to Test on Full Gamepads:**
+   * **Dual Sticks:** Verify the **Left Stick** moves the mouse pointer smoothly, and the **Right Stick** performs continuous scrolling (Desktop Mouse mode) or continuous seek (Media Remote mode).
+   * **Instant Screenshot Button:** Press the dedicated **Capture / Share** button. It should take a screenshot immediately with **0ms delay** and haptic confirmation (no holding needed!).
+   * **Instant Guide / Home Button:** Press the **Xbox / PS / Home** button. It should instantly open the Start Menu or desktop application overview.
+   * **D-Pad Stepping:** Test discrete volume stepping in Media Remote mode (D-Pad Up = Vol Up, D-Pad Down = Vol Down) and command history in Terminal mode.
+
+---
+
 ## 🎨 Customizing Your Controls (Without Writing Code!)
 
 You don't need to write code to change how your Joy-Con behaves. All user settings are stored in a simple configuration file:
