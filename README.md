@@ -103,6 +103,7 @@ If you downloaded or cloned this repository:
 | Contributor | Role | Platform / Hardware Tested | Status |
 | :--- | :--- | :--- | :--- |
 | [**@ImNotMrReaper**](https://github.com/ImNotMrReaper) | Creator & Lead Maintainer | Linux (Ubuntu 24.04 LTS), Joy-Con (L/R) | Active |
+| [**@Senpai59**](https://github.com/Senpai59) | Windows Lead Tester & Contributor | Windows 10/11, `windows` Branch Development & QA | Active |
 | *Community Testers* | Windows & Mac Testers | Windows 10/11, macOS Sequoia/Sonoma | In Progress |
 
 > 📢 **Are you helping test?** [Submit your feedback here](https://github.com/ImNotMrReaper/joycon-mouse/issues/new?template=tester_feedback.md) to get your name and profile added to the wall!

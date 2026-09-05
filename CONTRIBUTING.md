@@ -51,15 +51,30 @@ Check out our [**Beta Tester Guide (`TESTING_GUIDE.md`)**](TESTING_GUIDE.md) and
 
 ---
 
+## 🌲 Multi-Branch Platform Architecture & Collaboration
+
+To keep operating systems completely isolated without bloating individual platform installs with incompatible code, Joy-Con Mouse maintains dedicated OS branches:
+
+* **`windows` (Windows Native)**: Pure Windows driver (`joycon-mouse-windows.py`), PowerShell/Batch installers (`install.ps1`, `install.bat`, `run_windows.bat`), and native Windows API hooks. Led by Windows Contributor & Lead Tester **[@Senpai59](https://github.com/Senpai59)**.
+* **`main` (Linux Core)**: Native Linux `evdev` & `uinput` daemon, systemd service, and GNOME/Wayland integrations. Managed by **[@ImNotMrReaper](https://github.com/ImNotMrReaper)**.
+* **`macos` (macOS Native)**: macOS CoreGraphics event tap drivers and `launchd` service configurations.
+
+### 🪟 Windows Development & Review Workflow
+1. **Branch Target**: All Windows-specific bugfixes, driver optimizations, and batch scripts must target this `windows` branch (`git checkout windows`).
+2. **Collaboration**: **[@Senpai59](https://github.com/Senpai59)** leads Windows testing, debugging, and initial implementation.
+3. **Review & Push Policy**: Pull requests and feature branches targeting `windows` are reviewed by project lead **[@ImNotMrReaper](https://github.com/ImNotMrReaper)** before final approval and merging to ensure standards and security compliance.
+
+---
+
 ## 🛠️ Contribution Guidelines
 
-1. **Zero External Dependencies**: Keep the core driver lightweight and dependent solely on the Python Standard Library (`fcntl`, `struct`, `select`, `math`, `os`, `threading`).
+1. **Zero External Dependencies**: Keep the core Windows driver lightweight and dependent solely on the standard library (`ctypes`, `winmm.dll`, `user32.dll`, `math`, `os`, `json`, `threading`).
 2. **Non-Blocking Execution**: Ensure all polling loops and input processing routines remain non-blocking.
 3. **Clean Commit Messages**: Use standard conventional commits (e.g., `feat: ...`, `fix: ...`, `docs: ...`, `perf: ...`).
 4. **Pull Requests**:
-   - Fork the repository.
-   - Create a feature branch (`git checkout -b feat/my-awesome-mode`).
+   - Create a feature branch off `windows` (`git checkout -b feat/windows-hotfix windows`).
    - Commit and push your changes.
-   - Open a Pull Request against `main`.
+   - Open a Pull Request targeting the `windows` branch for review by **[@ImNotMrReaper](https://github.com/ImNotMrReaper)**.
 
 Thank you for making Joy-Con Mouse better for the entire open-source community!
+

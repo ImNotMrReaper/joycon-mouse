@@ -1,0 +1,13 @@
+# CODEOWNERS for joycon-mouse (windows branch)
+# Defines repository maintainers and component code owners.
+
+# Default owner for everything in the repository
+* @ImNotMrReaper
+
+# Windows platform components & scripts (co-maintained with @Senpai59)
+/joycon-mouse-windows.py @ImNotMrReaper @Senpai59
+/run_windows.bat @ImNotMrReaper @Senpai59
+/install.bat @ImNotMrReaper @Senpai59
+/install.ps1 @ImNotMrReaper @Senpai59
+/build_exe.bat @ImNotMrReaper @Senpai59
+/uninstall.bat @ImNotMrReaper @Senpai59
