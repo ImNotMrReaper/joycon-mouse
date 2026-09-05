@@ -58,7 +58,7 @@ If your friends want to test right away without downloading zip files or manual 
 
 * **🪟 Windows (PowerShell):**
   ```powershell
-  irm https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.ps1 | iex
+  irm https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/windows/install.ps1 | iex
   ```
   *(Installs Python if missing, creates Desktop & Start Menu shortcuts, and gets ready in seconds).*
 
