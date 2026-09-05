@@ -5,7 +5,14 @@ Base Class for all Modular Controller Modes.
 Location: modes/base.py
 """
 
+import sys
 from typing import Any, Dict
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 # Standard Linux Keycodes
 KEY_ESC = 1
