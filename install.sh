@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# 🎮 Joy-Con Mouse & Universal Remote Interactive Installer for Linux
-# Location: install.sh
+# 🎮 Joy-Con Mouse & Universal Remote Universal 1-Click Installer
+# Supports: Linux (Ubuntu, Debian, Fedora, Arch) & macOS (auto-delegation)
+# Remote 1-Liner:
+#   curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.sh | bash
 # ==============================================================================
 set -e
 
@@ -15,6 +17,111 @@ RED="\033[91m"
 DIM="\033[2m"
 RESET="\033[0m"
 
+NONINTERACTIVE="${NONINTERACTIVE:-0}"
+for arg in "$@"; do
+    case "$arg" in
+        -y|--yes|--non-interactive)
+            NONINTERACTIVE=1
+            ;;
+    esac
+done
+
+# Pipe-safe and non-interactive input helper
+prompt_read() {
+    local prompt_msg="$1"
+    local out_var="$2"
+    local default_val="$3"
+    if [ "$NONINTERACTIVE" = "1" ] || [ -n "$CI" ]; then
+        eval "$out_var=\"$default_val\""
+    elif [ -t 0 ]; then
+        read -rp "$prompt_msg" "$out_var"
+    elif [ -r /dev/tty ]; then
+        read -rp "$prompt_msg" "$out_var" < /dev/tty
+    else
+        eval "$out_var=\"$default_val\""
+    fi
+}
+
+# --- macOS Platform Delegation ---
+if [ "$(uname -s)" = "Darwin" ]; then
+    echo -e "\n================================================================================"
+    echo -e "  ${BOLD}${PURPLE}🍎 JOY-CON MOUSE 1-CLICK INSTALLER FOR MACOS${RESET}"
+    echo -e "  ${DIM}Transform Switch Joy-Cons into a precision pointer & media remote on macOS.${RESET}"
+    echo -e "================================================================================\n"
+
+    if ! command -v python3 &>/dev/null; then
+        echo -e "  ${RED}❌ Python 3 was not found on your Mac.${RESET}"
+        echo -e "  Please install Python 3 via Homebrew: ${BOLD}brew install python${RESET}"
+        echo -e "  or download from: ${BOLD}https://www.python.org/downloads/${RESET}\n"
+        exit 1
+    fi
+    echo -e "  ${GREEN}✓ Python 3 detected ($(python3 --version))${RESET}"
+
+    TARGET_DIR="$HOME/.local/share/joycon-mouse"
+    mkdir -p "$TARGET_DIR"
+
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd)"
+    if [ -f "$SCRIPT_DIR/joycon-mouse-macos.py" ]; then
+        echo -e "  Deploying files from local repository to $TARGET_DIR..."
+        cp -r "$SCRIPT_DIR"/* "$TARGET_DIR/"
+    else
+        echo -e "  ${PURPLE}📦 Fetching latest macOS release from GitHub...${RESET}"
+        curl -fsSL https://github.com/ImNotMrReaper/joycon-mouse/archive/refs/heads/macos.tar.gz | tar -xz -C "$TARGET_DIR" --strip-components=1
+    fi
+    chmod +x "$TARGET_DIR"/*.command "$TARGET_DIR"/*.py "$TARGET_DIR"/*.sh 2>/dev/null || true
+
+    # Desktop shortcut launcher
+    DESKTOP_LAUNCHER="$HOME/Desktop/Joy-Con Mouse.command"
+    cat > "$DESKTOP_LAUNCHER" << 'EOF_MAC'
+#!/usr/bin/env bash
+DIR="$HOME/.local/share/joycon-mouse"
+cd "$DIR" || exit 1
+exec python3 "$DIR/joycon-mouse-macos.py" "$@"
+EOF_MAC
+    chmod +x "$DESKTOP_LAUNCHER"
+    echo -e "  ${GREEN}✓ Created Desktop launcher: 'Joy-Con Mouse.command'${RESET}"
+
+    # Global CLI command in ~/.local/bin
+    mkdir -p "$HOME/.local/bin"
+    CLI_CMD="$HOME/.local/bin/joycon-mouse"
+    cat > "$CLI_CMD" << 'EOF_CLI'
+#!/usr/bin/env bash
+exec python3 "$HOME/.local/share/joycon-mouse/joycon-mouse-macos.py" "$@"
+EOF_CLI
+    chmod +x "$CLI_CMD"
+    echo -e "  ${GREEN}✓ Created global command: joycon-mouse${RESET}"
+
+    # Check and add ~/.local/bin to PATH
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+        for rc in "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.bashrc"; do
+            if [ -f "$rc" ]; then
+                echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$rc"
+            fi
+        done
+        export PATH="$HOME/.local/bin:$PATH"
+    fi
+
+    echo -e "\n================================================================================"
+    echo -e "  ${BOLD}${GREEN}🎉 JOY-CON MOUSE INSTALLATION COMPLETE!${RESET}"
+    echo -e "================================================================================"
+    echo -e "  • Installed Folder:  ${CYAN}$TARGET_DIR${RESET}"
+    echo -e "  • Desktop Shortcut:  ${CYAN}Joy-Con Mouse.command${RESET} (on your Desktop)"
+    echo -e "  • Terminal Command:  ${CYAN}joycon-mouse${RESET}"
+    echo -e "--------------------------------------------------------------------------------"
+    echo -e "  ⚠️  ${BOLD}${YELLOW}CRITICAL MACOS ACCESSIBILITY PERMISSION:${RESET}"
+    echo -e "  macOS requires granting Accessibility access so Joy-Con Mouse can move the pointer."
+    echo -e "  1. Open ${BOLD}System Settings > Privacy & Security > Accessibility${RESET}."
+    echo -e "  2. Toggle ${BOLD}ON${RESET} for ${BOLD}Terminal${RESET} (or iTerm2 / your terminal app)."
+    echo -e "--------------------------------------------------------------------------------"
+    echo -e "  🎮 ${BOLD}Getting Started:${RESET}"
+    echo -e "  1. Pair your Joy-Con: System Settings > Bluetooth (Hold Sync button on rail)."
+    echo -e "  2. Double-click ${BOLD}Joy-Con Mouse.command${RESET} on your Desktop!"
+    echo -e "================================================================================"
+    echo ""
+    exit 0
+fi
+
+# --- Linux Platform Flow ---
 echo -e "\n================================================================================"
 echo -e "  ${BOLD}${PURPLE}🎮 JOY-CON MOUSE INTERACTIVE INSTALLER FOR LINUX${RESET}"
 echo -e "  ${DIM}Transform Joy-Cons & Gamepads into a precision mouse & media remote.${RESET}"
@@ -23,14 +130,15 @@ echo -e "=======================================================================
 # WSL Notice
 if [ -f /proc/version ] && grep -qi "microsoft" /proc/version; then
     echo -e "  ${YELLOW}ℹ️  Notice: Running inside Windows Subsystem for Linux (WSL).${RESET}"
-    echo -e "  ${DIM}For native Windows desktop control without VM setup, we recommend${RESET}"
-    echo -e "  ${DIM}switching to the 'windows' branch and running 'run_windows.bat' directly on Windows!${RESET}\n"
+    echo -e "  ${DIM}For native Windows desktop control without VM setup, we recommend running${RESET}"
+    echo -e "  ${BOLD}irm https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.ps1 | iex${RESET}"
+    echo -e "  ${DIM}directly inside Windows PowerShell!${RESET}\n"
 fi
 
 # 1. Dependency Resolution
 check_and_install_dependencies() {
     echo -e "${BOLD}${CYAN}[Step 1/6] Checking system dependencies...${RESET}"
-    
+
     local MISSING=()
     if ! command -v python3 &>/dev/null; then MISSING+=("python3"); fi
     if ! command -v git &>/dev/null; then MISSING+=("git"); fi
@@ -75,13 +183,30 @@ check_and_install_dependencies() {
 
 check_and_install_dependencies
 
-SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# 2. Remote Bootstrap or Local Source Detection
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd)"
+BOOTSTRAP_DIR=""
 IS_GIT_REPO=false
-if [ -d "$SOURCE_DIR/.git" ]; then
-    IS_GIT_REPO=true
+
+if [ -f "$SCRIPT_DIR/joycon-mouse.py" ]; then
+    SOURCE_DIR="$SCRIPT_DIR"
+    if [ -d "$SOURCE_DIR/.git" ]; then
+        IS_GIT_REPO=true
+    fi
+else
+    echo -e "  ${PURPLE}📦 Fetching latest Joy-Con Mouse repository from GitHub...${RESET}"
+    BOOTSTRAP_DIR="$(mktemp -d -t joycon-mouse-install-XXXXXX)"
+    trap 'rm -rf "$BOOTSTRAP_DIR"' EXIT
+    if command -v git &>/dev/null; then
+        git clone --depth 1 https://github.com/ImNotMrReaper/joycon-mouse.git "$BOOTSTRAP_DIR" --quiet
+    else
+        curl -fsSL https://github.com/ImNotMrReaper/joycon-mouse/archive/refs/heads/main.tar.gz | tar -xz -C "$BOOTSTRAP_DIR" --strip-components=1
+    fi
+    SOURCE_DIR="$BOOTSTRAP_DIR"
+    IS_GIT_REPO=false
 fi
 
-# 2. Installation Location Selection
+# 3. Installation Location Selection
 echo -e "${BOLD}${CYAN}[Step 2/6] Choose Installation Location${RESET}"
 echo -e "${DIM}Where would you like Joy-Con Mouse files to be installed?${RESET}\n"
 
@@ -97,7 +222,7 @@ if [ "$IS_GIT_REPO" = true ]; then
     echo -e "      Installs system-wide for all users on this computer (requires sudo)."
     echo -e "  ${BOLD}[4] Custom Directory:${RESET}         Enter your own custom file path.\n"
 
-    read -rp "$(echo -e "  Select option [1-4] [${GREEN}1${RESET}]: ")" LOC_CHOICE
+    prompt_read "  Select option [1-4] [${GREEN}1${RESET}]: " LOC_CHOICE "1"
     LOC_CHOICE="${LOC_CHOICE:-1}"
 
     case "$LOC_CHOICE" in
@@ -105,7 +230,7 @@ if [ "$IS_GIT_REPO" = true ]; then
         2) TARGET_DIR="$SOURCE_DIR" ;;
         3) TARGET_DIR="$DEFAULT_SYS_DIR" ;;
         4)
-            read -rp "$(echo -e "  Enter custom installation directory path: ")" CUSTOM_PATH
+            prompt_read "  Enter custom installation directory path: " CUSTOM_PATH ""
             CUSTOM_PATH="${CUSTOM_PATH/#\~/$HOME}"
             if [ -z "$CUSTOM_PATH" ]; then
                 TARGET_DIR="$DEFAULT_USER_DIR"
@@ -122,14 +247,14 @@ else
     echo -e "      Installs system-wide for all users on this computer (requires sudo)."
     echo -e "  ${BOLD}[3] Custom Directory:${RESET}         Enter your own custom file path.\n"
 
-    read -rp "$(echo -e "  Select option [1-3] [${GREEN}1${RESET}]: ")" LOC_CHOICE
+    prompt_read "  Select option [1-3] [${GREEN}1${RESET}]: " LOC_CHOICE "1"
     LOC_CHOICE="${LOC_CHOICE:-1}"
 
     case "$LOC_CHOICE" in
         1) TARGET_DIR="$DEFAULT_USER_DIR" ;;
         2) TARGET_DIR="$DEFAULT_SYS_DIR" ;;
         3)
-            read -rp "$(echo -e "  Enter custom installation directory path: ")" CUSTOM_PATH
+            prompt_read "  Enter custom installation directory path: " CUSTOM_PATH ""
             CUSTOM_PATH="${CUSTOM_PATH/#\~/$HOME}"
             if [ -z "$CUSTOM_PATH" ]; then
                 TARGET_DIR="$DEFAULT_USER_DIR"
@@ -143,7 +268,7 @@ fi
 
 echo -e "  ${GREEN}✓ Selected destination:${RESET} $TARGET_DIR\n"
 
-# 3. Copy Application Files (if not linking in-place)
+# 4. Copy Application Files (if not linking in-place)
 echo -e "${BOLD}${CYAN}[Step 3/6] Setting up program files...${RESET}"
 if [ "$TARGET_DIR" != "$SOURCE_DIR" ]; then
     echo -e "  Deploying files to $TARGET_DIR..."
@@ -162,7 +287,7 @@ else
     echo -e "  ${GREEN}✓ Using existing directory in-place.${RESET}"
 fi
 
-# 4. Global Command Setup (PATH) & Shell Completion
+# 5. Global Command Setup (PATH) & Shell Completion
 echo -e "\n${BOLD}${CYAN}[Step 4/6] Configuring global terminal command & completions...${RESET}"
 if [[ "$TARGET_DIR" =~ ^/opt/ ]] || [[ "$TARGET_DIR" =~ ^/usr/ ]]; then
     BIN_PATH="/usr/local/bin/joycon-mouse"
@@ -203,7 +328,7 @@ EOF
     # Check if ~/.local/bin is in PATH
     if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
         echo -e "  ${YELLOW}Notice: '$HOME/.local/bin' is not currently in your system PATH.${RESET}"
-        read -rp "$(echo -e "  Add it to your ~/.bashrc automatically? [${GREEN}Y${RESET}/n]: ")" ADD_PATH
+        prompt_read "  Add it to your ~/.bashrc automatically? [${GREEN}Y${RESET}/n]: " ADD_PATH "y"
         ADD_PATH="${ADD_PATH:-y}"
         if [[ "$ADD_PATH" =~ ^[yY] ]]; then
             echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
@@ -214,13 +339,13 @@ EOF
     fi
 fi
 
-# 5. Linux Permissions & Hardware Configuration
+# 6. Linux Permissions & Hardware Configuration
 echo -e "\n${BOLD}${CYAN}[Step 5/6] Checking Linux hardware permissions...${RESET}"
 
 # A. Input group check
 if ! groups "$USER" | grep -q '\binput\b'; then
     echo -e "  ${YELLOW}⚠️  Permission notice:${RESET} Linux requires your user to be in the 'input' group to create virtual mouse events."
-    read -rp "$(echo -e "  Add '$USER' to the 'input' group now? [${GREEN}Y${RESET}/n]: ")" GRANT_INPUT
+    prompt_read "  Add '$USER' to the 'input' group now? [${GREEN}Y${RESET}/n]: " GRANT_INPUT "y"
     GRANT_INPUT="${GRANT_INPUT:-y}"
     if [[ "$GRANT_INPUT" =~ ^[yY] ]]; then
         sudo usermod -aG input "$USER" || echo -e "  ${RED}Could not add user automatically. Run manually: sudo usermod -aG input \$USER${RESET}"
@@ -256,7 +381,7 @@ fi
 if [ "$NEEDS_BT_FIX" = true ]; then
     echo -e "\n  ${PURPLE}💡 Bluetooth Reconnection Optimization:${RESET}"
     echo -e "     By default, Ubuntu/BlueZ rejects automatic reconnects from Nintendo Switch controllers on wake."
-    read -rp "$(echo -e "     Apply the BlueZ auto-reconnect optimization now? [${GREEN}Y${RESET}/n]: ")" FIX_BT
+    prompt_read "     Apply the BlueZ auto-reconnect optimization now? [${GREEN}Y${RESET}/n]: " FIX_BT "y"
     FIX_BT="${FIX_BT:-y}"
     if [[ "$FIX_BT" =~ ^[yY] ]]; then
         sudo sed -i 's/.*ClassicBondedOnly=.*/ClassicBondedOnly=false/' "$BLUETOOTH_INPUT_CONF" 2>/dev/null || true
@@ -268,18 +393,23 @@ else
     echo -e "  ${GREEN}✓ Bluetooth auto-reconnect optimization is already active.${RESET}"
 fi
 
-# 6. Interactive Setup Wizard
+# 7. Interactive Setup Wizard
 echo -e "\n${BOLD}${CYAN}[Step 6/6] Controller Setup & Customization Wizard${RESET}"
 echo -e "${DIM}Configure your preferred modes, pointer sensitivity, rumble, and autostart.${RESET}\n"
 
-read -rp "$(echo -e "  Launch interactive setup wizard now? [${GREEN}Y${RESET}/n]: ")" RUN_SETUP
-RUN_SETUP="${RUN_SETUP:-y}"
+if [ -t 0 ] || [ -r /dev/tty ]; then
+    prompt_read "  Launch interactive setup wizard now? [${GREEN}Y${RESET}/n]: " RUN_SETUP "y"
+    RUN_SETUP="${RUN_SETUP:-y}"
 
-if [[ "$RUN_SETUP" =~ ^[yY] ]]; then
-    python3 "$TARGET_DIR/setup_wizard.py"
+    if [[ "$RUN_SETUP" =~ ^[yY] ]]; then
+        python3 "$TARGET_DIR/setup_wizard.py"
+    fi
+else
+    echo -e "  ${DIM}Skipping interactive setup wizard (non-interactive session).${RESET}"
+    echo -e "  Run ${BOLD}joycon-mouse --setup${RESET} anytime to configure!"
 fi
 
-# 7. Final Success Banner
+# 8. Final Success Banner
 echo -e "\n================================================================================"
 echo -e "  ${BOLD}${GREEN}🎉 JOY-CON MOUSE INSTALLATION COMPLETE!${RESET}"
 echo -e "================================================================================"
@@ -292,4 +422,5 @@ echo -e "  🎮 ${BOLD}Getting Started:${RESET}"
 echo -e "  1. Pair your Joy-Con via Bluetooth (Hold small round pairing button until LEDs cycle)."
 echo -e "  2. List detected controllers:  ${BOLD}joycon-mouse -l${RESET}"
 echo -e "  3. Start desktop controller:   ${BOLD}joycon-mouse${RESET}"
-echo -e "================================================================================\n"
+echo -e "================================================================================"
+echo ""

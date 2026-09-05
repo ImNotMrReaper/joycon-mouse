@@ -81,16 +81,44 @@ joycon-mouse/
 
 ## 🚀 Quick Start by Operating System
 
-Choose your platform below for instant 1-click setup instructions:
+### ⚡ 1-Liner Quick Install (Recommended)
+
+Paste the 1-liner for your operating system into your terminal:
+
+#### 🐧 Linux (Ubuntu, Debian, Fedora, Arch, Steam Deck)
+```bash
+curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.sh | bash
+```
+
+#### 🪟 Windows (PowerShell on Windows 10 & 11)
+```powershell
+irm https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.ps1 | iex
+```
+
+#### 🍎 macOS (Terminal)
+```bash
+curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/macos/install.sh | bash
+```
+*(Tip: On macOS, the universal `curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.sh | bash` command also automatically detects macOS!)*
+
+---
 
 ### 🪟 Windows (Windows 10 & 11) — [`windows` Branch](https://github.com/ImNotMrReaper/joycon-mouse/tree/windows)
 
+#### Option A: 1-Liner in PowerShell (Fastest)
+Open PowerShell (Win + X > Terminal or PowerShell) and run:
+```powershell
+irm https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.ps1 | iex
+```
+*Auto-detects Python (installs Python 3.12 via winget if missing), creates Desktop & Start Menu shortcuts, and adds `joycon-mouse` to system PATH.*
+
+#### Option B: Offline / Local Installer (`install.bat`)
 1. **Pair your Joy-Con:** Hold the round Sync button on the Joy-Con side-rail until lights flash, then connect via **Windows Settings > Bluetooth & devices**.
 2. **Download the Windows Branch:**
    * Download the ZIP from the [`windows` branch](https://github.com/ImNotMrReaper/joycon-mouse/tree/windows) and extract it (or `git checkout windows`).
 3. **1-Click Installer (`install.bat`):**
    * Double-click **`install.bat`**.
-   * Auto-detects Python (or offers 1-click installation via winget), sets up user settings in `%APPDATA%\joycon-mouse`, and generates **Desktop and Start Menu shortcuts**.
+   * Auto-detects Python, sets up user settings in `%APPDATA%\joycon-mouse`, and generates **Desktop and Start Menu shortcuts**.
 4. **Launch Anytime:**
    * Double-click the **Joy-Con Mouse** icon on your Desktop or run **`run_windows.bat`**!
    * *Want a standalone `.exe`?* Double-click **`build_exe.bat`** to package `JoyConMouse.exe` in 1 click!
@@ -100,7 +128,13 @@ Choose your platform below for instant 1-click setup instructions:
 
 ### 🐧 Linux (Ubuntu, Debian, Fedora, Arch, Steam Deck) — [`main` Branch](https://github.com/ImNotMrReaper/joycon-mouse/tree/main)
 
-1. **Interactive 1-Click Installer:**
+#### Option A: 1-Liner in Terminal (Fastest)
+```bash
+curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.sh | bash
+```
+
+#### Option B: Local Repository Install
+1. **Run Installer:**
    ```bash
    ./install.sh
    ```
@@ -125,6 +159,13 @@ Choose your platform below for instant 1-click setup instructions:
 
 ### 🍎 macOS (Monterey, Ventura, Sonoma, Sequoia) — [`macos` Branch](https://github.com/ImNotMrReaper/joycon-mouse/tree/macos)
 
+#### Option A: 1-Liner in Terminal (Fastest)
+```bash
+curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/macos/install.sh | bash
+```
+*Auto-deploys driver, generates Desktop launcher `Joy-Con Mouse.command`, and configures terminal command.*
+
+#### Option B: Offline / Local Run
 1. **Pair your Joy-Con:** Hold the Sync button, open **System Settings > Bluetooth**, and click Connect.
 2. **Download the Mac Branch:** Download the ZIP from the [`macos` branch](https://github.com/ImNotMrReaper/joycon-mouse/tree/macos) (or `git checkout macos`).
 3. **Accessibility Permission:** Ensure Terminal is enabled under **System Settings > Privacy & Security > Accessibility**.
