@@ -18,6 +18,7 @@ from modes.base import (
     BaseMode,
     KEY_C, KEY_F, KEY_MUTE, KEY_VOLUMEDOWN, KEY_VOLUMEUP,
     KEY_LEFT, KEY_RIGHT, KEY_NEXTSONG, KEY_PLAYPAUSE, KEY_PREVIOUSSONG,
+    KEY_ESC, KEY_ENTER, KEY_T, KEY_SPACE,
     KEY_LEFTMETA, KEY_SYSRQ,
     PAD_BTN_NORTH, PAD_BTN_SOUTH, PAD_BTN_WEST, PAD_BTN_EAST,
     PAD_BTN_TL, PAD_BTN_TR, PAD_BTN_TL2, PAD_BTN_TR2,
@@ -80,17 +81,33 @@ class MediaRemoteMode(BaseMode):
             return bm
 
         return {
-            PAD_BTN_TR2: {"action": "key", "code": KEY_PLAYPAUSE, "desc": "RT / R2 -> Play / Pause"},
-            PAD_BTN_TR: {"action": "key", "code": KEY_MUTE, "desc": "RB / R1 -> Mute Audio"},
-            PAD_BTN_NORTH: {"action": "key", "code": KEY_C, "desc": "Y / Triangle -> Toggle Subtitles"},
-            PAD_BTN_SOUTH: {"action": "key", "code": KEY_LEFT, "desc": "A / Cross -> Rewind (-10s)"},
+            # Right Shoulders: Play/Pause & Fast Forward
+            PAD_BTN_TR2: {"action": "key", "code": KEY_PLAYPAUSE, "desc": "RT / ZR -> Play / Pause"},
+            PAD_BTN_TR: {"action": "key", "code": KEY_RIGHT, "desc": "RB / R -> Fast Forward (+10s)"},
+
+            # Left Shoulders: Mute & Rewind
+            PAD_BTN_TL2: {"action": "key", "code": KEY_MUTE, "desc": "LT / ZL -> Mute Audio"},
+            PAD_BTN_TL: {"action": "key", "code": KEY_LEFT, "desc": "LB / L -> Instant Rewind (-10s)"},
+
+            # Left Hand Directional Pad: Volume & Track Skipping
             PAD_BTN_DPAD_UP: {"action": "key", "code": KEY_VOLUMEUP, "desc": "D-Pad Up -> Volume Up"},
             PAD_BTN_DPAD_DOWN: {"action": "key", "code": KEY_VOLUMEDOWN, "desc": "D-Pad Down -> Volume Down"},
             PAD_BTN_DPAD_LEFT: {"action": "key", "code": KEY_PREVIOUSSONG, "desc": "D-Pad Left -> Prev Track"},
             PAD_BTN_DPAD_RIGHT: {"action": "key", "code": KEY_NEXTSONG, "desc": "D-Pad Right -> Next Track"},
-            PAD_BTN_THUMBL: {"action": "key", "code": KEY_F, "desc": "L3 -> Fullscreen Toggle"},
-            PAD_BTN_THUMBR: {"action": "mode_cycle", "desc": "R3 -> Cycle Mode"},
-            PAD_BTN_PLUS: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode"},
+
+            # Right Hand Face Buttons: Enter, Exit, Subtitles, Fullscreen
+            PAD_BTN_EAST: {"action": "key", "code": KEY_ENTER, "desc": "A / East -> Enter / Play / Confirm"},
+            PAD_BTN_SOUTH: {"action": "key", "code": KEY_ESC, "desc": "B / South -> Escape / Exit Fullscreen"},
+            PAD_BTN_NORTH: {"action": "key", "code": KEY_C, "desc": "X / North -> Toggle Subtitles (C)"},
+            PAD_BTN_WEST: {"action": "key", "code": KEY_F, "desc": "Y / West -> Toggle Fullscreen (F)"},
+
+            # Stick Clicks: Theater Mode & Quick Seek
+            PAD_BTN_THUMBL: {"action": "key", "code": KEY_T, "desc": "L3 -> Theater Mode (T)"},
+            PAD_BTN_THUMBR: {"action": "key", "code": KEY_SPACE, "desc": "R3 -> Pause / Space"},
+
+            # Navigation & Mode Management
+            PAD_BTN_PLUS: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode Forward"},
+            PAD_BTN_MINUS: {"action": "key", "code": KEY_MUTE, "desc": "Select / - -> Mute Audio"},
             PAD_BTN_HOME: {"action": "key", "code": KEY_LEFTMETA, "desc": "Guide / Home -> Home / Super Key (Instant)"},
             PAD_BTN_CAPTURE: {"action": "key", "code": KEY_SYSRQ, "desc": "Capture / Share -> Instant Screenshot"},
         }

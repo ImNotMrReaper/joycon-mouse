@@ -17,7 +17,7 @@ if _project_root not in sys.path:
 from modes.base import (
     BaseMode,
     KEY_ESC, KEY_SPACE, KEY_BACKSPACE, KEY_B, KEY_F5, KEY_LEFTSHIFT,
-    KEY_PAGEUP, KEY_PAGEDOWN,
+    KEY_PAGEUP, KEY_PAGEDOWN, KEY_ENTER, KEY_W, KEY_LEFT, KEY_RIGHT,
     KEY_LEFTMETA, KEY_SYSRQ,
     PAD_BTN_NORTH, PAD_BTN_SOUTH, PAD_BTN_WEST, PAD_BTN_EAST,
     PAD_BTN_TL, PAD_BTN_TR, PAD_BTN_TL2, PAD_BTN_TR2,
@@ -65,13 +65,30 @@ class PresentationMode(BaseMode):
 
         # 3. Dual Joy-Cons & Standard Gamepads
         return {
-            PAD_BTN_TR2: {"action": "key", "code": KEY_SPACE, "desc": "RT / R2 -> Next Slide (Space)"},
-            PAD_BTN_TL2: {"action": "key", "code": KEY_BACKSPACE, "desc": "LT / L2 -> Previous Slide (Backspace)"},
-            PAD_BTN_SOUTH: {"action": "key", "code": KEY_SPACE, "desc": "A / Cross -> Next Slide"},
-            PAD_BTN_EAST: {"action": "key", "code": KEY_BACKSPACE, "desc": "B / Circle -> Previous Slide"},
-            PAD_BTN_NORTH: {"action": "key", "code": KEY_F5, "desc": "Y / Triangle -> Start Presentation (F5)"},
-            PAD_BTN_WEST: {"action": "key", "code": KEY_B, "desc": "X / Square -> Black Screen (B)"},
+            # Right Shoulders: Advance & Blank Screen
+            PAD_BTN_TR2: {"action": "key", "code": KEY_SPACE, "desc": "RT / ZR -> Next Slide (Space)"},
+            PAD_BTN_TR: {"action": "key", "code": KEY_B, "desc": "RB / R -> Black Screen (B)"},
+
+            # Left Shoulders: Return & Start Slideshow
+            PAD_BTN_TL2: {"action": "key", "code": KEY_BACKSPACE, "desc": "LT / ZL -> Previous Slide (Backspace)"},
+            PAD_BTN_TL: {"action": "key", "code": KEY_F5, "desc": "LB / L -> Start Presentation (F5)"},
+
+            # Directional Pad: Jump to Beginning / End & Step
+            PAD_BTN_DPAD_UP: {"action": "key", "code": KEY_PAGEUP, "desc": "D-Pad Up -> Page Up / First Slide"},
+            PAD_BTN_DPAD_DOWN: {"action": "key", "code": KEY_PAGEDOWN, "desc": "D-Pad Down -> Page Down / Last Slide"},
+            PAD_BTN_DPAD_LEFT: {"action": "key", "code": KEY_LEFT, "desc": "D-Pad Left -> Previous Slide (Arrow Left)"},
+            PAD_BTN_DPAD_RIGHT: {"action": "key", "code": KEY_RIGHT, "desc": "D-Pad Right -> Next Slide (Arrow Right)"},
+
+            # Face Buttons: Advance, Exit, Start, White Screen
+            PAD_BTN_EAST: {"action": "key", "code": KEY_ENTER, "desc": "A / East -> Next Slide / Confirm"},
+            PAD_BTN_SOUTH: {"action": "key", "code": KEY_ESC, "desc": "B / South -> Exit Slideshow (Esc)"},
+            PAD_BTN_NORTH: {"action": "key", "code": KEY_F5, "desc": "X / North -> Start Presentation (F5)"},
+            PAD_BTN_WEST: {"action": "key", "code": KEY_W, "desc": "Y / West -> White Screen (W)"},
+
+            # Stick Clicks: Exit Slideshow
             PAD_BTN_THUMBL: {"action": "key", "code": KEY_ESC, "desc": "L3 -> Exit Slideshow (Esc)"},
+
+            # Navigation & Mode Management
             PAD_BTN_PLUS: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode"},
             PAD_BTN_HOME: {"action": "key", "code": KEY_LEFTMETA, "desc": "Guide / Home -> Home / Super Key (Instant)"},
             PAD_BTN_CAPTURE: {"action": "key", "code": KEY_SYSRQ, "desc": "Capture / Share -> Instant Screenshot"},

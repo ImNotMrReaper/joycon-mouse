@@ -843,7 +843,8 @@ def run_controller_session(
                                     continue
 
                             active_mode = get_current_mode()
-                            button_map = active_mode.get_button_map(node_info.device_type)
+                            lookup_type = "dual_joycon" if profile.name == "dual_joycon" else node_info.device_type
+                            button_map = active_mode.get_button_map(lookup_type)
                             action_config = button_map.get(code)
 
                             if log.debug:

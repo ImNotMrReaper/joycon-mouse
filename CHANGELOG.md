@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.4] - 2026-09-05
+
+### 🎯 Directional Pad Keyboard Navigation & Zero-Redundancy Controller Layouts
+- **Directional Pad Keyboard Navigation**:
+  - Fixed Terminal Mode Directional Pad: D-Pad Down (`PAD_BTN_SOUTH` / `PAD_BTN_DPAD_DOWN`) on both Single Left Joy-Con and Single Right Joy-Con now emits `KEY_DOWN` (keyboard Down Arrow) instead of Backspace.
+  - Full 4-way D-Pad keyboard navigation enabled across Single and Dual Joy-Cons: Up (`KEY_UP`), Down (`KEY_DOWN`), Left (`KEY_LEFT`), and Right (`KEY_RIGHT`) for seamless selection in interactive CLI menus, prompts, and shell history.
+  - Standardized intuitive triggers and bumpers: Trigger is Enter / Submit (`KEY_ENTER`), Bumper is Backspace / Erase (`KEY_BACKSPACE`), Side SL is Tab Auto-Complete (`KEY_TAB`), Side SR is Escape / Cancel (`KEY_ESC`), and Stick Click is Interrupt (`Ctrl+C`).
+- **Zero Button Redundancy Across Dual Joy-Cons & Universal Gamepads**:
+  - Overhauled Dual Joy-Con event dispatching in `joycon-mouse.py` to route through the unified `dual_joycon` layout rather than falling back to two independent single-controller mappings.
+  - Completely eliminated duplicate actions across all modes:
+    * **Desktop Mouse**: ZR (Left Click), R (Right Click), ZL (Middle Click / New Tab), L (Close Tab `Ctrl+W`), D-Pad (Scroll & History), ABXY (Enter, Escape, New Tab `Ctrl+T`, Spacebar), L3 (Show Desktop `Super+D`), R3 (Reload `Ctrl+R`), Plus (Cycle Mode), Minus (Prev Tab).
+    * **Interactive Terminal**: D-Pad (Up/Down selection, Left/Right cursor), ABXY (Enter, Backspace, Quick 'y', Erase Line `Ctrl+U`), Shoulders (Tab `ZR`, Clear Screen `L`, Interrupt `ZL`, Erase Line `R`), L3 (Suspend `Ctrl+Z`), R3 (EOF `Ctrl+D`), Plus (Cycle Mode), Minus (Page Up).
+    * **Universal Media Remote**: ZR (Play/Pause), R (Fast Forward +10s), ZL (Mute Audio), L (Rewind -10s), D-Pad (Volume Up/Down, Prev/Next Track), ABXY (Enter/Play, Escape, Subtitles `C`, Fullscreen `F`), L3 (Theater Mode `T`).
+    * **Gaming & Macro Hotkeys**: Shoulders (Jump, Quick Save, Target, Quick Load), D-Pad (Macros F13-F16), ABXY (Interact, Menu, Inventory, Map), Stick Clicks (Sprint, Character Sheet).
+    * **Presentation Clicker**: Shoulders (Next Slide, Black Screen, Previous Slide, Start Presentation), D-Pad (First/Last Slide, Prev/Next Step), ABXY (Advance, Exit, Start, White Screen).
+
+---
+
 ## [1.2.3] - 2026-09-05
 
 ### 💡 Dual Joy-Con Auto-Pairing & Player 1 LED Synchronization

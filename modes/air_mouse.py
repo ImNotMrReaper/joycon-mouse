@@ -16,7 +16,8 @@ if _project_root not in sys.path:
 
 from modes.base import (
     BaseMode,
-    KEY_ESC, KEY_ENTER, KEY_BACK, KEY_FORWARD,
+    KEY_ESC, KEY_ENTER, KEY_BACK, KEY_FORWARD, KEY_SPACE, KEY_PAGEUP,
+    KEY_W, KEY_R, KEY_T, KEY_D, KEY_LEFTCTRL,
     KEY_LEFTMETA, KEY_SYSRQ,
     MOUSE_BTN_LEFT, MOUSE_BTN_RIGHT, MOUSE_BTN_MIDDLE,
     PAD_BTN_NORTH, PAD_BTN_SOUTH, PAD_BTN_WEST, PAD_BTN_EAST,
@@ -80,20 +81,33 @@ class AirMouseMode(BaseMode):
             return bm
 
         return {
-            PAD_BTN_TR2: {"action": "mouse_btn", "code": MOUSE_BTN_LEFT, "desc": "RT / R2 / ZR -> Left Click"},
-            PAD_BTN_TR: {"action": "mouse_btn", "code": MOUSE_BTN_RIGHT, "desc": "RB / R1 / R -> Right Click"},
-            PAD_BTN_TL2: {"action": "mouse_btn", "code": MOUSE_BTN_MIDDLE, "desc": "LT / L2 / ZL -> Middle Click"},
-            PAD_BTN_SOUTH: {"action": "key", "code": KEY_ENTER, "desc": "A / Cross -> Enter / Open"},
-            PAD_BTN_EAST: {"action": "key", "code": KEY_ESC, "desc": "B / Circle -> Escape"},
-            PAD_BTN_NORTH: {"action": "scroll", "param": 1, "desc": "Y / Triangle -> Scroll Up"},
-            PAD_BTN_WEST: {"action": "scroll", "param": -1, "desc": "X / Square -> Scroll Down"},
+            # Right Shoulders: Primary & Context Click
+            PAD_BTN_TR2: {"action": "mouse_btn", "code": MOUSE_BTN_LEFT, "desc": "RT / ZR -> Left Click"},
+            PAD_BTN_TR: {"action": "mouse_btn", "code": MOUSE_BTN_RIGHT, "desc": "RB / R -> Right Click"},
+
+            # Left Shoulders: Middle Click & Tab Close
+            PAD_BTN_TL2: {"action": "mouse_btn", "code": MOUSE_BTN_MIDDLE, "desc": "LT / ZL -> Middle Click (New Tab / Auto-Scroll)"},
+            PAD_BTN_TL: {"action": "combo", "keys": [KEY_LEFTCTRL, KEY_W], "desc": "LB / L -> Close Tab (Ctrl+W)"},
+
+            # Face Buttons: Open, Dismiss, New Tab, Space
+            PAD_BTN_EAST: {"action": "key", "code": KEY_ENTER, "desc": "A / East -> Enter / Open"},
+            PAD_BTN_SOUTH: {"action": "key", "code": KEY_ESC, "desc": "B / South -> Escape / Dismiss"},
+            PAD_BTN_NORTH: {"action": "combo", "keys": [KEY_LEFTCTRL, KEY_T], "desc": "X / North -> New Tab (Ctrl+T)"},
+            PAD_BTN_WEST: {"action": "key", "code": KEY_SPACE, "desc": "Y / West -> Spacebar (Scroll Down / Play-Pause)"},
+
+            # Directional Pad: Precise Page Scrolling & Browser History
             PAD_BTN_DPAD_UP: {"action": "scroll", "param": 1, "desc": "D-Pad Up -> Scroll Up"},
             PAD_BTN_DPAD_DOWN: {"action": "scroll", "param": -1, "desc": "D-Pad Down -> Scroll Down"},
             PAD_BTN_DPAD_LEFT: {"action": "key", "code": KEY_BACK, "desc": "D-Pad Left -> Browser Back"},
             PAD_BTN_DPAD_RIGHT: {"action": "key", "code": KEY_FORWARD, "desc": "D-Pad Right -> Browser Forward"},
-            PAD_BTN_THUMBL: {"action": "mouse_btn", "code": MOUSE_BTN_MIDDLE, "desc": "L3 -> Middle Click"},
-            PAD_BTN_THUMBR: {"action": "mode_cycle", "desc": "R3 -> Cycle Mode"},
-            PAD_BTN_PLUS: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode"},
+
+            # Stick Clicks: Desktop Window Management
+            PAD_BTN_THUMBL: {"action": "combo", "keys": [KEY_LEFTMETA, KEY_D], "desc": "L3 -> Show Desktop (Super+D)"},
+            PAD_BTN_THUMBR: {"action": "combo", "keys": [KEY_LEFTCTRL, KEY_R], "desc": "R3 -> Reload Page (Ctrl+R)"},
+
+            # Navigation & Mode Management
+            PAD_BTN_PLUS: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode Forward"},
+            PAD_BTN_MINUS: {"action": "combo", "keys": [KEY_LEFTCTRL, KEY_PAGEUP], "desc": "Select / - -> Previous Tab"},
             PAD_BTN_HOME: {"action": "key", "code": KEY_LEFTMETA, "desc": "Guide / Home -> Home / Super Key (Instant)"},
             PAD_BTN_CAPTURE: {"action": "key", "code": KEY_SYSRQ, "desc": "Capture / Share -> Instant Screenshot"},
         }

@@ -79,12 +79,31 @@ class GamingHotkeysMode(BaseMode):
 
         # 3. Dual Joy-Cons & Standard Gamepads
         return {
-            PAD_BTN_TR2: {"action": "key", "code": KEY_SPACE, "desc": "RT / R2 -> Jump (Space)"},
-            PAD_BTN_TL2: {"action": "key", "code": KEY_TAB, "desc": "LT / L2 -> Tab"},
-            PAD_BTN_NORTH: {"action": "key", "code": KEY_I, "desc": "Y / Triangle -> Inventory (I)"},
-            PAD_BTN_WEST: {"action": "key", "code": KEY_M, "desc": "X / Square -> Map (M)"},
-            PAD_BTN_EAST: {"action": "key", "code": KEY_F5, "desc": "B / Circle -> Quick Save (F5)"},
-            PAD_BTN_SOUTH: {"action": "key", "code": KEY_F9, "desc": "A / Cross -> Quick Load (F9)"},
+            # Right Shoulders: Jump & Quick Save
+            PAD_BTN_TR2: {"action": "key", "code": KEY_SPACE, "desc": "RT / ZR -> Jump / Action (Space)"},
+            PAD_BTN_TR: {"action": "key", "code": KEY_F5, "desc": "RB / R -> Quick Save (F5)"},
+
+            # Left Shoulders: Target & Quick Load
+            PAD_BTN_TL2: {"action": "key", "code": KEY_TAB, "desc": "LT / ZL -> Target / Tab"},
+            PAD_BTN_TL: {"action": "key", "code": KEY_F9, "desc": "LB / L -> Quick Load (F9)"},
+
+            # Directional Pad: Programmable Gaming Macros (F13-F16)
+            PAD_BTN_DPAD_UP: {"action": "key", "code": KEY_F13, "desc": "D-Pad Up -> Macro 1 (F13)"},
+            PAD_BTN_DPAD_DOWN: {"action": "key", "code": KEY_F14, "desc": "D-Pad Down -> Macro 2 (F14)"},
+            PAD_BTN_DPAD_LEFT: {"action": "key", "code": KEY_F15, "desc": "D-Pad Left -> Macro 3 (F15)"},
+            PAD_BTN_DPAD_RIGHT: {"action": "key", "code": KEY_F16, "desc": "D-Pad Right -> Macro 4 (F16)"},
+
+            # Face Buttons: Interact, Cancel, Inventory, Map
+            PAD_BTN_EAST: {"action": "key", "code": KEY_ENTER, "desc": "A / East -> Interact / Enter"},
+            PAD_BTN_SOUTH: {"action": "key", "code": KEY_ESC, "desc": "B / South -> Menu / Cancel (Esc)"},
+            PAD_BTN_NORTH: {"action": "key", "code": KEY_I, "desc": "X / North -> Inventory (I)"},
+            PAD_BTN_WEST: {"action": "key", "code": KEY_M, "desc": "Y / West -> Map (M)"},
+
+            # Stick Clicks: Sprint & Character Sheet
+            PAD_BTN_THUMBL: {"action": "key", "code": KEY_LEFTSHIFT, "desc": "L3 -> Sprint (Shift)"},
+            PAD_BTN_THUMBR: {"action": "key", "code": KEY_C, "desc": "R3 -> Character Sheet (C)"},
+
+            # Navigation & Mode Management
             PAD_BTN_PLUS: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode"},
             PAD_BTN_HOME: {"action": "key", "code": KEY_LEFTMETA, "desc": "Guide / Home -> Home / Super Key (Instant)"},
             PAD_BTN_CAPTURE: {"action": "key", "code": KEY_SYSRQ, "desc": "Capture / Share -> Instant Screenshot"},
