@@ -28,8 +28,7 @@ jobs:
       - name: Verify Python Compilation (Zero Syntax Errors)
         run: |
           python -m py_compile joycon-mouse-windows.py joycon-mouse.py
-          python -m py_compile modes/*.py
-          python -m py_compile custom_modes/*.py
+          python -m compileall modes custom_modes
 
       - name: Test Standalone Mode Execution
         run: |
