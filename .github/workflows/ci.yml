@@ -1,20 +1,20 @@
-name: CI
+name: CI (macOS Branch)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ macos ]
   pull_request:
-    branches: [ main ]
+    branches: [ macos ]
   workflow_dispatch:
 
 jobs:
   validate:
-    name: Test & Validate (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    name: Test & Validate macOS Suite (Python ${{ matrix.python-version }})
+    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout Code
@@ -27,13 +27,9 @@ jobs:
 
       - name: Verify Python Compilation (Zero Syntax Errors)
         run: |
-          python -m py_compile joycon-mouse.py setup_wizard.py test_buttons.py
+          python -m py_compile joycon-mouse-macos.py joycon-mouse.py
           python -m py_compile modes/*.py
           python -m py_compile custom_modes/*.py
-
-      - name: Test CLI Mode Discovery Engine
-        run: |
-          python joycon-mouse.py --list-modes
 
       - name: Test Standalone Mode Execution
         run: |
@@ -46,5 +42,5 @@ jobs:
       - name: Validate Shell Script Syntax
         run: |
           bash -n install.sh
-          bash -n setup.sh
           bash -n uninstall.sh
+          bash -n run_macos.command
