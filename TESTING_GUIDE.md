@@ -52,7 +52,29 @@ Joy-Con Mouse requires **no external Python libraries** (`zero pip install`). To
 
 ## 🚀 How to Test on Your Operating System
 
-Joy-Con Mouse has dedicated branches tailored for each operating system:
+### ⚡ Instant 1-Liner Install Commands
+
+If your friends want to test right away without downloading zip files or manual cloning, share these 1-liner commands:
+
+* **🪟 Windows (PowerShell):**
+  ```powershell
+  irm https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.ps1 | iex
+  ```
+  *(Installs Python if missing, creates Desktop & Start Menu shortcuts, and gets ready in seconds).*
+
+* **🐧 Linux (Terminal):**
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.sh | bash
+  ```
+
+* **🍎 macOS (Terminal):**
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/macos/install.sh | bash
+  ```
+
+---
+
+Joy-Con Mouse also maintains dedicated git branches tailored for each operating system:
 
 | Operating System | GitHub Branch | Pairing Method | Launch Command |
 | :--- | :--- | :--- | :--- |
