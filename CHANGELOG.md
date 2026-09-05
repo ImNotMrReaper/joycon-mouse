@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.1] - 2026-09-04
+
+### ⚡ Universal 1-Liner Web Installers (Windows, Linux, macOS)
+- **Windows (PowerShell)**: Added `install.ps1` enabling 1-liner remote installation:
+  `irm https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.ps1 | iex`
+  Auto-detects Python (silent winget installation if missing), downloads release ZIP, extracts to `%LOCALAPPDATA%\Programs\joycon-mouse`, configures `%APPDATA%\joycon-mouse`, creates Desktop & Start Menu shortcuts, and registers `joycon-mouse` command in system PATH.
+- **Linux (cURL/Bash)**: Upgraded `install.sh` with remote curl bootstrap detection and pipe-safe `/dev/tty` interactive fallback:
+  `curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/main/install.sh | bash`
+  Added automatic repository cloning, non-interactive mode flags (`-y`, `--yes`, `NONINTERACTIVE=1`), and automated distro dependency handling.
+- **macOS (Terminal)**: Integrated intelligent macOS auto-delegation in root `install.sh` and created dedicated macOS branch installer:
+  `curl -fsSL https://raw.githubusercontent.com/ImNotMrReaper/joycon-mouse/macos/install.sh | bash`
+  Creates double-clickable Desktop launcher `Joy-Con Mouse.command`, registers `joycon-mouse` CLI launcher, and provides macOS Accessibility permission guidance.
+
+---
+
 ## [1.2.0-preview] - 2026-09-04
 
 ### 🌐 Multi-Platform Architecture & Preview Branches
