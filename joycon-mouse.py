@@ -21,6 +21,13 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+# Real-time stdout line buffering for systemd service and background execution
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)
+except Exception:
+    pass
+
 # Dynamic plugin auto-loader
 from modes import load_all_modes
 from modes.base import BaseMode
@@ -631,6 +638,36 @@ def discover_input_devices() -> List[ControllerNode]:
     return detected_nodes
 
 
+def set_nintendo_player_leds(player_num: int = 1) -> None:
+    """Synchronizes physical player LEDs across all connected Nintendo controllers in sysfs.
+
+    player_num: 1-4. For player 1: LED 1 is ON (1), LEDs 2-4 are OFF (0).
+    When Joy-Cons are paired into a combined dual controller or used as the primary desktop
+    device, both controllers illuminate Player 1 instead of showing Player 1 and Player 2.
+    """
+    pattern_map = {
+        1: [1, 0, 0, 0],
+        2: [0, 1, 0, 0],
+        3: [0, 0, 1, 0],
+        4: [0, 0, 0, 1],
+    }
+    targets = pattern_map.get(player_num, [1, 0, 0, 0])
+
+    for led_dir in glob.glob("/sys/class/leds/*player-[1-4]"):
+        for p_idx in range(1, 5):
+            if led_dir.endswith(f"player-{p_idx}"):
+                val = str(targets[p_idx - 1])
+                try:
+                    b_path = os.path.join(led_dir, "brightness")
+                    with open(b_path, "r") as rf:
+                        cur = rf.read().strip()
+                    if cur != val:
+                        with open(b_path, "w") as wf:
+                            wf.write(val)
+                except (OSError, PermissionError):
+                    pass
+
+
 def run_controller_session(
     pads: List[ControllerNode],
     profile: DeviceProfile,
@@ -682,6 +719,7 @@ def run_controller_session(
     last_scroll_timestamp = 0.0
     last_media_seek_timestamp = 0.0
     last_tick_timestamp = time.perf_counter()
+    last_hotplug_check = time.perf_counter()
 
     is_dormant = False
     smart_press_timestamp: Optional[float] = None
@@ -730,6 +768,7 @@ def run_controller_session(
         print("Tip: Auto-Dormant enabled (Releases controller automatically when games launch).")
         print("=" * 65 + "\n")
 
+    set_nintendo_player_leds(1)
     print_status_banner()
 
     try:
@@ -744,6 +783,7 @@ def run_controller_session(
                 is_dormant = False
                 set_grab_state(True)
                 log.log("Game exited. Resuming Joy-Con desktop control.", level="INFO")
+                set_nintendo_player_leds(1)
                 print_status_banner()
 
             if is_dormant:
@@ -751,11 +791,24 @@ def run_controller_session(
                 last_tick_timestamp = time.perf_counter()
                 continue
 
-            # High-performance 250Hz polling (4ms timeout)
-            poll_events = poll_object.poll(4)
             now_time = time.perf_counter()
             delta_time = now_time - last_tick_timestamp
             last_tick_timestamp = now_time
+
+            # Periodic hotplug check and LED synchronization (every 1.5s)
+            if (now_time - last_hotplug_check) >= 1.5:
+                last_hotplug_check = now_time
+                set_nintendo_player_leds(1)
+                # If operating in single Joy-Con mode, check if partner Joy-Con connected
+                if profile.name in ("left_joycon", "right_joycon"):
+                    partner_type = "right_joycon" if profile.name == "left_joycon" else "left_joycon"
+                    discovered = discover_input_devices()
+                    if any(p.device_type == partner_type for p in discovered):
+                        log.log("[Hotplug] Partner Joy-Con detected! Merging into Combined Dual Joy-Con mode...", level="INFO")
+                        return
+
+            # High-performance 250Hz polling (4ms timeout)
+            poll_events = poll_object.poll(4)
 
             if delta_time > 0.05:
                 delta_time = 0.016
@@ -804,6 +857,7 @@ def run_controller_session(
                                     mode_index = (mode_index + 1) % total_modes
                                     if rumble:
                                         rumble.mode_switch()
+                                    set_nintendo_player_leds(1)
                                     log.log(f"Switched mode to [{get_current_mode().name}]", level="INFO")
                                     print_status_banner()
 
@@ -1148,26 +1202,30 @@ def main() -> int:
         primary_pad = controllers[0]
         chosen_profile_name = args.profile or primary_pad.device_type
 
-        # Interactive Dual Joy-Con Pairing Detection
+        # Dual Joy-Con Pairing Detection
         if len(controllers) >= 2 and not args.profile:
             has_left = any(p.device_type == "left_joycon" for p in controllers)
             has_right = any(p.device_type == "right_joycon" for p in controllers)
             if has_left and has_right:
-                print("\n[Pairing Prompt] Detected both Left and Right Joy-Cons connected!")
-                try:
-                    user_resp = input("  Would you like to pair them into a single Dual Joy-Con controller? [Y/n]: ").strip().lower()
-                except (EOFError, KeyboardInterrupt):
-                    user_resp = "y"
-
-                if user_resp in ("", "y", "yes"):
+                if not sys.stdin.isatty():
                     chosen_profile_name = "dual_joycon"
-                    print("  -> Initialized in Combined Dual Joy-Con mode.\n")
+                    print("\n[Auto-Pairing] Detected both Left and Right Joy-Cons! Combined into single Dual Joy-Con controller.\n")
                 else:
-                    chosen_profile_name = primary_pad.device_type
-                    print(f"  -> Initialized separate mode for {primary_pad.name}.\n")
+                    print("\n[Pairing Prompt] Detected both Left and Right Joy-Cons connected!")
+                    try:
+                        user_resp = input("  Would you like to pair them into a single Dual Joy-Con controller? [Y/n]: ").strip().lower()
+                    except (EOFError, KeyboardInterrupt):
+                        user_resp = "y"
 
-        # Interactive Cheat-Code Setup Wizard if requested
-        if security_mgr and (args.set_code or not security_mgr.has_code(chosen_profile_name)):
+                    if user_resp in ("", "y", "yes"):
+                        chosen_profile_name = "dual_joycon"
+                        print("  -> Initialized in Combined Dual Joy-Con mode.\n")
+                    else:
+                        chosen_profile_name = primary_pad.device_type
+                        print(f"  -> Initialized separate mode for {primary_pad.name}.\n")
+
+        # Interactive Cheat-Code Setup Wizard if requested (interactive terminal only)
+        if security_mgr and sys.stdin.isatty() and (args.set_code or not security_mgr.has_code(chosen_profile_name)):
             try:
                 temp_fd = os.open(primary_pad.path, os.O_RDONLY | os.O_NONBLOCK)
                 if not security_mgr.has_code(chosen_profile_name):

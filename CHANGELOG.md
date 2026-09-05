@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.3] - 2026-09-05
+
+### 💡 Dual Joy-Con Auto-Pairing & Player 1 LED Synchronization
+- **Dual Joy-Con Player 1 LED Synchronization**:
+  - When Left and Right Joy-Cons act as a single combined controller, both controllers' physical rail LED indicators dynamically display **Player 1** (`[1, 0, 0, 0]`) via `/sys/class/leds/*player*/brightness`.
+  - Eliminates the confusing default kernel state where one Joy-Con displayed Player 1 and the other displayed Player 2 while acting as a unified controller.
+- **Dynamic Hotplug Auto-Pairing**:
+  - Implemented 1.5s non-blocking hotplug polling in `run_controller_session()`. If a single Joy-Con is active and the complementary partner Joy-Con powers on or connects via Bluetooth, the driver dynamically merges into Combined Dual Joy-Con mode without restarting.
+- **Daemon & Background Service Non-Interactive Pairing**:
+  - Ensured background daemon execution (`sys.stdin.isatty() == False`) automatically pairs detected Joy-Con pairs into `dual_joycon` mode and bypasses interactive prompts.
+- **Persistent Player LED udev Infrastructure**:
+  - Updated `install.sh` to install `/etc/udev/rules.d/99-joycon-mouse.rules` with `chmod a+rw` permissions on `*player-*` sysfs nodes.
+
+---
+
 ## [1.2.2] - 2026-09-05
 
 ### 🎮 Universal Gamepads & Controller Ergonomics

@@ -323,6 +323,22 @@ else
     echo -e "  ${GREEN}✓ Bluetooth auto-reconnect optimization is already active.${RESET}"
 fi
 
+# D. Nintendo Controller Player LEDs & uinput udev rules
+UDEV_RULE_FILE="/etc/udev/rules.d/99-joycon-mouse.rules"
+if [ ! -f "$UDEV_RULE_FILE" ] || ! grep -q "player-" "$UDEV_RULE_FILE" 2>/dev/null; then
+    echo -e "  Configuring udev permissions for uinput and Nintendo Player LEDs..."
+    sudo tee "$UDEV_RULE_FILE" > /dev/null << 'EOF'
+KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput", GROUP="input", MODE="0660"
+SUBSYSTEM=="leds", KERNEL=="*player-*", RUN+="/bin/chmod a+rw /sys/class/leds/%k/brightness"
+SUBSYSTEM=="leds", KERNEL=="*home*", RUN+="/bin/chmod a+rw /sys/class/leds/%k/brightness"
+EOF
+    sudo udevadm control --reload-rules 2>/dev/null || true
+    sudo udevadm trigger --subsystem-match=leds 2>/dev/null || true
+    echo -e "  ${GREEN}✓ Configured Joy-Con udev rules and player LED permissions.${RESET}"
+else
+    echo -e "  ${GREEN}✓ Joy-Con udev rules and player LED permissions already configured.${RESET}"
+fi
+
 # 7. Interactive Setup Wizard
 echo -e "\n${BOLD}${CYAN}[Step 6/6] Controller Setup & Customization Wizard${RESET}"
 echo -e "${DIM}Configure your preferred modes, pointer sensitivity, rumble, and autostart.${RESET}\n"
