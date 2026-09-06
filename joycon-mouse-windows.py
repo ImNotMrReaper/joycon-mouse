@@ -154,6 +154,8 @@ DEFAULT_MAPPINGS = {
         "media_vol_down": 1,
         "media_vol_up": 2,
         "media_next_track": 3,
+        "media_prev_track": 4,
+        "media_mute": 5,
         "terminal_enter": 0,
         "terminal_backspace": 1,
         "terminal_tab": 2,
@@ -177,6 +179,8 @@ DEFAULT_MAPPINGS = {
         "media_vol_down": 1,
         "media_vol_up": 3,
         "media_next_track": 0,
+        "media_prev_track": 4,
+        "media_mute": 5,
         "terminal_enter": 2,
         "terminal_backspace": 1,
         "terminal_tab": 0,
@@ -200,6 +204,8 @@ DEFAULT_MAPPINGS = {
         "media_vol_down": 4,       # L1
         "media_vol_up": 5,         # R1
         "media_next_track": 1,     # Next Track
+        "media_prev_track": 2,     # Previous Track
+        "media_mute": 10,          # Mute (L3)
         "terminal_enter": 0,       # Enter / Submit
         "terminal_backspace": 1,   # Backspace
         "terminal_tab": 4,         # L1 / Tab Auto-Complete
@@ -292,6 +298,8 @@ class WindowsJoyConDriver:
         self.last_pov = 65535
         self.last_pov_direction = "CENTER"
         self.last_scroll_time = 0.0
+        self.last_seek_time = 0.0
+        self.last_vol_time = 0.0
         self.acc_x = 0.0
         self.acc_y = 0.0
         self.acc_scroll = 0.0
@@ -483,6 +491,8 @@ class WindowsJoyConDriver:
             ("media_vol_down", "VOLUME DOWN", 1),
             ("media_vol_up", "VOLUME UP", 2),
             ("media_next_track", "NEXT TRACK", 3),
+            ("media_prev_track", "PREVIOUS TRACK", 4),
+            ("media_mute", "MUTE AUDIO", 5),
             ("terminal_enter", "TERMINAL ENTER / SUBMIT", 0),
             ("terminal_backspace", "TERMINAL BACKSPACE", 1),
             ("terminal_tab", "TERMINAL TAB AUTO-COMPLETE", 2),
@@ -601,6 +611,8 @@ class WindowsJoyConDriver:
         btn_m_voldn = self.active_mapping.get("media_vol_down", 1)
         btn_m_volup = self.active_mapping.get("media_vol_up", 2)
         btn_m_next = self.active_mapping.get("media_next_track", 3)
+        btn_m_prev = self.active_mapping.get("media_prev_track", 4)
+        btn_m_mute = self.active_mapping.get("media_mute", 5)
 
         btn_t_enter = self.active_mapping.get("terminal_enter", 0)
         btn_t_back = self.active_mapping.get("terminal_backspace", 1)
@@ -628,39 +640,6 @@ class WindowsJoyConDriver:
                 norm_x = (info.dwXpos - 32768) / 32768.0
                 norm_y = (info.dwYpos - 32768) / 32768.0
 
-                mag = math.hypot(norm_x, norm_y)
-                if mag > self.deadzone:
-                    eff_mag = min(1.0, (mag - self.deadzone) / (1.0 - self.deadzone))
-                    speed = (eff_mag ** 1.6) * 16.0 * self.sensitivity
-                    angle = math.atan2(norm_y, norm_x)
-                    dx = math.cos(angle) * speed
-                    dy = math.sin(angle) * speed
-                    self.acc_x += dx
-                    self.acc_y += dy
-                    step_x = int(self.acc_x)
-                    step_y = int(self.acc_y)
-                    if step_x != 0 or step_y != 0:
-                        self.acc_x -= step_x
-                        self.acc_y -= step_y
-                        self.move_mouse(step_x, step_y)
-                else:
-                    self.acc_x = 0.0
-                    self.acc_y = 0.0
-
-                # Right Stick continuous vertical scroll wheel (when dual Joy-Cons or gamepad connected)
-                if hasattr(info, "dwRpos") and info.dwRpos > 0:
-                    norm_r = (info.dwRpos - 32768) / 32768.0
-                    if abs(norm_r) > self.deadzone:
-                        eff_r = (abs(norm_r) - self.deadzone) / (1.0 - self.deadzone)
-                        scroll_delta = -math.copysign(eff_r ** 1.5, norm_r) * 0.4
-                        self.acc_scroll += scroll_delta
-                        step_scroll = int(self.acc_scroll)
-                        if step_scroll != 0:
-                            self.acc_scroll -= step_scroll
-                            self.mouse_wheel(step_scroll)
-                    else:
-                        self.acc_scroll = 0.0
-
                 # Check button state changes
                 buttons = info.dwButtons
                 pressed = buttons & ~self.last_buttons
@@ -676,6 +655,12 @@ class WindowsJoyConDriver:
 
                 # Mode cycling button
                 if (pressed & (1 << btn_cycle)) or (pressed & (1 << btn_cycle_alt)):
+                    if self.left_pressed:
+                        self.mouse_up("left")
+                    if self.right_pressed:
+                        self.mouse_up("right")
+                    if self.middle_pressed:
+                        self.mouse_up("middle")
                     self.cycle_mode()
 
                 # Dedicated Screenshot Button (when not conflicting with pad click)
@@ -690,6 +675,40 @@ class WindowsJoyConDriver:
                 curr_mode = self.modes[self.current_mode_index]
 
                 if curr_mode == "DESKTOP MOUSE":
+                    # Analog Stick -> Mouse Cursor Movement
+                    mag = math.hypot(norm_x, norm_y)
+                    if mag > self.deadzone:
+                        eff_mag = min(1.0, (mag - self.deadzone) / (1.0 - self.deadzone))
+                        speed = (eff_mag ** 1.6) * 16.0 * self.sensitivity
+                        angle = math.atan2(norm_y, norm_x)
+                        dx = math.cos(angle) * speed
+                        dy = math.sin(angle) * speed
+                        self.acc_x += dx
+                        self.acc_y += dy
+                        step_x = int(self.acc_x)
+                        step_y = int(self.acc_y)
+                        if step_x != 0 or step_y != 0:
+                            self.acc_x -= step_x
+                            self.acc_y -= step_y
+                            self.move_mouse(step_x, step_y)
+                    else:
+                        self.acc_x = 0.0
+                        self.acc_y = 0.0
+
+                    # Right Stick continuous vertical scroll wheel (when dual Joy-Cons or gamepad connected)
+                    if hasattr(info, "dwRpos") and info.dwRpos > 0:
+                        norm_r = (info.dwRpos - 32768) / 32768.0
+                        if abs(norm_r) > self.deadzone:
+                            eff_r = (abs(norm_r) - self.deadzone) / (1.0 - self.deadzone)
+                            scroll_delta = -math.copysign(eff_r ** 1.5, norm_r) * 0.4
+                            self.acc_scroll += scroll_delta
+                            step_scroll = int(self.acc_scroll)
+                            if step_scroll != 0:
+                                self.acc_scroll -= step_scroll
+                                self.mouse_wheel(step_scroll)
+                        else:
+                            self.acc_scroll = 0.0
+
                     # Left Click (Standard Left Click or Trackpad Physical Click)
                     is_left_down = bool((buttons & (1 << btn_left)) or (btn_pad_click is not None and (buttons & (1 << btn_pad_click))))
                     if is_left_down:
@@ -726,7 +745,42 @@ class WindowsJoyConDriver:
                         self.send_key(VK_BROWSER_FORWARD)
 
                 elif curr_mode == "MEDIA REMOTE":
+                    # Release mouse buttons if lingering from mode transition
+                    if self.left_pressed:
+                        self.mouse_up("left")
+                    if self.right_pressed:
+                        self.mouse_up("right")
+                    if self.middle_pressed:
+                        self.mouse_up("middle")
+                    self.acc_x = 0.0
+                    self.acc_y = 0.0
+
                     fg_app = get_foreground_window_title() or "System Default"
+
+                    # Analog Stick Media Seek (Parity with Linux enable_media_seek)
+                    # Horizontal deflection scrubs video / seeks audio (+5s / -5s)
+                    if norm_x > 0.55:
+                        if now - self.last_seek_time >= 0.25:
+                            self.send_key(VK_RIGHT)
+                            print(f"\n  {BOLD}{CYAN}⏩ [Media Seek]{RESET} Forward (+5s) -> {fg_app}")
+                            self.last_seek_time = now
+                    elif norm_x < -0.55:
+                        if now - self.last_seek_time >= 0.25:
+                            self.send_key(VK_LEFT)
+                            print(f"\n  {BOLD}{CYAN}⏪ [Media Seek]{RESET} Rewind (-5s) -> {fg_app}")
+                            self.last_seek_time = now
+
+                    # Vertical deflection adjusts volume up/down
+                    if norm_y < -0.65:
+                        if now - self.last_vol_time >= 0.15:
+                            self.send_key(VK_VOLUME_UP)
+                            self.last_vol_time = now
+                    elif norm_y > 0.65:
+                        if now - self.last_vol_time >= 0.15:
+                            self.send_key(VK_VOLUME_DOWN)
+                            self.last_vol_time = now
+
+                    # Button Controls: Play/Pause, Volume, Next/Prev Track, Mute
                     if pressed & (1 << btn_m_play):
                         if self.is_browser_or_media_window():
                             self.send_key(VK_SPACE)
@@ -741,22 +795,43 @@ class WindowsJoyConDriver:
                     if pressed & (1 << btn_m_next):
                         self.send_key(VK_MEDIA_NEXT_TRACK)
                         print(f"\n  {BOLD}{CYAN}⏭ [Media]{RESET} Next Track -> {fg_app}")
+                    if btn_m_prev is not None and (pressed & (1 << btn_m_prev)):
+                        self.send_key(VK_MEDIA_PREV_TRACK)
+                        print(f"\n  {BOLD}{CYAN}⏮ [Media]{RESET} Previous Track -> {fg_app}")
+                    if btn_m_mute is not None and (pressed & (1 << btn_m_mute)):
+                        self.send_key(VK_VOLUME_MUTE)
+                        print(f"\n  {BOLD}{YELLOW}🔇 [Media]{RESET} Toggle Mute Audio")
 
                     # D-Pad POV in Media Remote:
                     if pov_dir == "UP":
-                        if now - self.last_scroll_time >= 0.12:
+                        if now - self.last_vol_time >= 0.12:
                             self.send_key(VK_VOLUME_UP)
-                            self.last_scroll_time = now
+                            self.last_vol_time = now
                     elif pov_dir == "DOWN":
-                        if now - self.last_scroll_time >= 0.12:
+                        if now - self.last_vol_time >= 0.12:
                             self.send_key(VK_VOLUME_DOWN)
-                            self.last_scroll_time = now
+                            self.last_vol_time = now
                     elif pov_dir == "LEFT" and pov_changed:
                         self.send_key(VK_MEDIA_PREV_TRACK)
                     elif pov_dir == "RIGHT" and pov_changed:
                         self.send_key(VK_MEDIA_NEXT_TRACK)
 
                 elif curr_mode == "INTERACTIVE TERMINAL":
+                    if self.left_pressed:
+                        self.mouse_up("left")
+                    if self.right_pressed:
+                        self.mouse_up("right")
+                    if self.middle_pressed:
+                        self.mouse_up("middle")
+                    self.acc_x = 0.0
+                    self.acc_y = 0.0
+
+                    # Vertical stick scrolls terminal history
+                    if abs(norm_y) > 0.40 and (now - self.last_scroll_time >= 0.08):
+                        step = 1 if norm_y < 0 else -1
+                        self.mouse_wheel(step)
+                        self.last_scroll_time = now
+
                     if pressed & (1 << btn_t_enter):
                         self.send_key(VK_RETURN)
                     if pressed & (1 << btn_t_back):
@@ -781,6 +856,14 @@ class WindowsJoyConDriver:
                         self.send_key(VK_RIGHT)   # Cursor Right
 
                 elif curr_mode == "PRESENTATION CLICKER":
+                    if self.left_pressed:
+                        self.mouse_up("left")
+                    if self.right_pressed:
+                        self.mouse_up("right")
+                    if self.middle_pressed:
+                        self.mouse_up("middle")
+                    self.acc_x = 0.0
+                    self.acc_y = 0.0
                     if pressed & (1 << btn_s_next):
                         self.send_key(VK_RIGHT)
                     if pressed & (1 << btn_s_prev):
