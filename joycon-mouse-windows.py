@@ -15,6 +15,13 @@ import json
 import argparse
 from typing import Dict, Any, Optional
 
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # Check if running on Windows
 IS_WINDOWS = sys.platform.startswith("win")
 
@@ -275,6 +282,9 @@ class WindowsJoyConDriver:
         self.last_pov = 65535
         self.last_pov_direction = "CENTER"
         self.last_scroll_time = 0.0
+        self.acc_x = 0.0
+        self.acc_y = 0.0
+        self.acc_scroll = 0.0
         self.left_pressed = False
         self.right_pressed = False
         self.middle_pressed = False
@@ -294,21 +304,41 @@ class WindowsJoyConDriver:
             except Exception:
                 pass
 
+    def is_browser_or_media_window(self) -> bool:
+        """Checks if Opera, Chrome, Edge, YouTube, or another media player is active in the foreground."""
+        title = (get_foreground_window_title() or "").lower()
+        return any(k in title for k in [
+            "youtube", "opera", "chrome", "firefox", "edge", "brave", "twitch", "netflix", "vlc", "spotify"
+        ])
+
     def send_key(self, vk_code):
         if not IS_WINDOWS or not user32:
             return
-        user32.keybd_event(vk_code, 0, KEYEVENTF_EXTENDEDKEY, 0)
-        time.sleep(0.02)
-        user32.keybd_event(vk_code, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0)
+        scan = user32.MapVirtualKeyW(vk_code, 0)
+        extended_keys = {
+            VK_LWIN, VK_SNAPSHOT, VK_MEDIA_PLAY_PAUSE, VK_MEDIA_NEXT_TRACK,
+            VK_MEDIA_PREV_TRACK, VK_VOLUME_UP, VK_VOLUME_DOWN, VK_VOLUME_MUTE,
+            VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT, VK_RETURN, VK_SPACE,
+            VK_BROWSER_BACK, VK_BROWSER_FORWARD
+        }
+        flags = KEYEVENTF_EXTENDEDKEY if vk_code in extended_keys else 0
+        user32.keybd_event(vk_code, scan, flags, 0)
+        time.sleep(0.015)
+        user32.keybd_event(vk_code, scan, flags | KEYEVENTF_KEYUP, 0)
 
     def send_combo(self, keys):
         if not IS_WINDOWS or not user32:
             return
+        extended_keys = {VK_LWIN, VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT, VK_RETURN}
         for k in keys:
-            user32.keybd_event(k, 0, KEYEVENTF_EXTENDEDKEY, 0)
-        time.sleep(0.02)
+            scan = user32.MapVirtualKeyW(k, 0)
+            flags = KEYEVENTF_EXTENDEDKEY if k in extended_keys else 0
+            user32.keybd_event(k, scan, flags, 0)
+        time.sleep(0.015)
         for k in reversed(keys):
-            user32.keybd_event(k, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0)
+            scan = user32.MapVirtualKeyW(k, 0)
+            flags = KEYEVENTF_EXTENDEDKEY if k in extended_keys else 0
+            user32.keybd_event(k, scan, flags | KEYEVENTF_KEYUP, 0)
 
     def move_mouse(self, dx, dy):
         if not IS_WINDOWS or not user32:
@@ -590,7 +620,31 @@ class WindowsJoyConDriver:
                     angle = math.atan2(norm_y, norm_x)
                     dx = math.cos(angle) * speed
                     dy = math.sin(angle) * speed
-                    self.move_mouse(dx, dy)
+                    self.acc_x += dx
+                    self.acc_y += dy
+                    step_x = int(self.acc_x)
+                    step_y = int(self.acc_y)
+                    if step_x != 0 or step_y != 0:
+                        self.acc_x -= step_x
+                        self.acc_y -= step_y
+                        self.move_mouse(step_x, step_y)
+                else:
+                    self.acc_x = 0.0
+                    self.acc_y = 0.0
+
+                # Right Stick continuous vertical scroll wheel (when dual Joy-Cons or gamepad connected)
+                if hasattr(info, "dwRpos") and info.dwRpos > 0:
+                    norm_r = (info.dwRpos - 32768) / 32768.0
+                    if abs(norm_r) > self.deadzone:
+                        eff_r = (abs(norm_r) - self.deadzone) / (1.0 - self.deadzone)
+                        scroll_delta = -math.copysign(eff_r ** 1.5, norm_r) * 0.4
+                        self.acc_scroll += scroll_delta
+                        step_scroll = int(self.acc_scroll)
+                        if step_scroll != 0:
+                            self.acc_scroll -= step_scroll
+                            self.mouse_wheel(step_scroll)
+                    else:
+                        self.acc_scroll = 0.0
 
                 # Check button state changes
                 buttons = info.dwButtons
@@ -656,8 +710,12 @@ class WindowsJoyConDriver:
                 elif curr_mode == "MEDIA REMOTE":
                     fg_app = get_foreground_window_title() or "System Default"
                     if pressed & (1 << btn_m_play):
-                        self.send_key(VK_MEDIA_PLAY_PAUSE)
-                        print(f"\n  {BOLD}{GREEN}▶/⏸ [Media]{RESET} Play/Pause -> {fg_app}")
+                        if self.is_browser_or_media_window():
+                            self.send_key(VK_SPACE)
+                            print(f"\n  {BOLD}{GREEN}▶/⏸ [Media]{RESET} Spacebar (Play/Pause) -> {fg_app}")
+                        else:
+                            self.send_key(VK_MEDIA_PLAY_PAUSE)
+                            print(f"\n  {BOLD}{GREEN}▶/⏸ [Media]{RESET} Play/Pause -> {fg_app}")
                     if pressed & (1 << btn_m_voldn):
                         self.send_key(VK_VOLUME_DOWN)
                     if pressed & (1 << btn_m_volup):
@@ -720,6 +778,12 @@ class WindowsJoyConDriver:
                 time.sleep(0.008)  # ~125 Hz polling rate
 
         except KeyboardInterrupt:
+            if self.left_pressed:
+                self.mouse_up("left")
+            if self.right_pressed:
+                self.mouse_up("right")
+            if self.middle_pressed:
+                self.mouse_up("middle")
             print(f"\n{GREEN}Joy-Con Mouse for Windows stopped cleanly.{RESET}\n")
 
 
