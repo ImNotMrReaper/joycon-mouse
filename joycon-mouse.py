@@ -668,15 +668,19 @@ class JoystickFilter:
         self.config = config
         self.normalized_x = 0.0
         self.normalized_y = 0.0
+        self.right_stick_y = 0.0
         self.subpixel_x = 0.0
         self.subpixel_y = 0.0
+        self.subpixel_scroll = 0.0
 
     def update_axis(self, code: int, value: int) -> None:
         normalized = max(-1.0, min(1.0, value / 32767.0))
-        if code in (0x00, 0x03):
+        if code in (0x00, 0x03):  # ABS_X or ABS_RX
             self.normalized_x = normalized
-        elif code in (0x01, 0x04):
+        elif code in (0x01,):     # ABS_Y
             self.normalized_y = normalized
+        elif code in (0x04, 0x05): # ABS_RY or ABS_RZ (Right Stick Y)
+            self.right_stick_y = normalized
 
     def process(self, delta_time: float) -> Tuple[int, int]:
         if not self.config.enabled:
@@ -702,6 +706,20 @@ class JoystickFilter:
         self.subpixel_x -= pixel_dx
         self.subpixel_y -= pixel_dy
         return pixel_dx, pixel_dy
+
+    def process_scroll(self, delta_time: float) -> int:
+        """Processes continuous vertical mouse wheel scrolling from the Right Analog Stick."""
+        if abs(self.right_stick_y) < self.config.dead_zone:
+            self.subpixel_scroll = 0.0
+            return 0
+
+        eff_r = (abs(self.right_stick_y) - self.config.dead_zone) / (1.0 - self.config.dead_zone)
+        scroll_delta = -math.copysign(math.pow(eff_r, 1.5), self.right_stick_y) * (18.0 * delta_time)
+        self.subpixel_scroll += scroll_delta
+        steps = int(self.subpixel_scroll)
+        if steps != 0:
+            self.subpixel_scroll -= steps
+        return steps
 
 
 class TouchpadFilter:
@@ -1310,13 +1328,18 @@ def run_controller_session(
             if active_mode.enable_joystick_cursor:
                 total_joy_dx = 0
                 total_joy_dy = 0
+                total_stick_scroll = 0
                 for j_filter in joystick_filters.values():
                     jdx, jdy = j_filter.process(delta_time)
                     total_joy_dx += jdx
                     total_joy_dy += jdy
+                    total_stick_scroll += j_filter.process_scroll(delta_time)
 
                 if total_joy_dx != 0 or total_joy_dy != 0:
                     uinput.move_cursor(total_joy_dx, total_joy_dy)
+
+                if total_stick_scroll != 0:
+                    uinput.emit_scroll(total_stick_scroll)
 
                 if active_scroll_direction != 0 and (now_time - last_scroll_timestamp) >= (profile.scroll_repeat_ms / 1000.0):
                     uinput.emit_scroll(active_scroll_direction)
