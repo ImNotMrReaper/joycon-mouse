@@ -1243,18 +1243,19 @@ def run_controller_session(
                             if custom_map is not None:
                                 if code == custom_map.get("trackpad_click"):
                                     action_config = {"action": "mouse_btn", "code": MOUSE_BTN_LEFT}
-                                elif code == custom_map.get("left_click"):
-                                    action_config = {"action": "mouse_btn", "code": MOUSE_BTN_LEFT}
-                                elif code == custom_map.get("right_click"):
-                                    action_config = {"action": "mouse_btn", "code": MOUSE_BTN_RIGHT}
-                                elif code == custom_map.get("middle_click"):
-                                    action_config = {"action": "mouse_btn", "code": MOUSE_BTN_MIDDLE}
                                 elif code == custom_map.get("cycle_mode"):
                                     action_config = {"action": "mode_cycle"}
                                 elif code == custom_map.get("screenshot"):
                                     action_config = {"action": "key", "code": KEY_CODE_SYSRQ}
                                 elif code == custom_map.get("home"):
                                     action_config = {"action": "smart_home"}
+                                elif getattr(active_mode, "enable_joystick_cursor", False):
+                                    if code == custom_map.get("left_click"):
+                                        action_config = {"action": "mouse_btn", "code": MOUSE_BTN_LEFT}
+                                    elif code == custom_map.get("right_click"):
+                                        action_config = {"action": "mouse_btn", "code": MOUSE_BTN_RIGHT}
+                                    elif code == custom_map.get("middle_click"):
+                                        action_config = {"action": "mouse_btn", "code": MOUSE_BTN_MIDDLE}
 
                             if action_config is None:
                                 action_config = button_map.get(code)
