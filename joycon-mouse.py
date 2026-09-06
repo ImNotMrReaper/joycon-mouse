@@ -113,8 +113,114 @@ EVENT_STRUCT_FORMAT = "llHHi" if IS_64_BIT else "iiHHi"
 EVENT_STRUCT_SIZE = struct.calcsize(EVENT_STRUCT_FORMAT)
 
 
+DEFAULT_CONTROLLER_PROFILES: Dict[str, Any] = {
+    "right_joycon": {
+        "name": "Nintendo Switch Right Joy-Con",
+        "left_click": 313,
+        "right_click": 311,
+        "middle_click": 318,
+        "cycle_mode": 315,
+        "screenshot": 316,
+        "home": 316,
+        "media_play_pause": 313,
+        "media_vol_down": 310,
+        "media_vol_up": 312,
+        "media_next_track": 305,
+        "media_prev_track": 308,
+        "terminal_enter": 313,
+        "terminal_backspace": 311,
+        "terminal_tab": 310,
+        "terminal_esc": 312,
+        "slide_next": 305,
+        "slide_prev": 304,
+    },
+    "left_joycon": {
+        "name": "Nintendo Switch Left Joy-Con",
+        "left_click": 312,
+        "right_click": 310,
+        "middle_click": 317,
+        "cycle_mode": 314,
+        "screenshot": 309,
+        "home": 309,
+        "media_play_pause": 312,
+        "media_vol_down": 311,
+        "media_vol_up": 313,
+        "media_next_track": 305,
+        "media_prev_track": 308,
+        "terminal_enter": 312,
+        "terminal_backspace": 310,
+        "terminal_tab": 311,
+        "terminal_esc": 313,
+        "slide_next": 305,
+        "slide_prev": 304,
+    },
+    "playstation": {
+        "name": "Sony PlayStation (DualSense / DualShock 4)",
+        "left_click": 313,
+        "right_click": 311,
+        "middle_click": 312,
+        "trackpad_click": 272,
+        "cycle_mode": 315,
+        "screenshot": 309,
+        "home": 316,
+        "media_play_pause": 304,
+        "media_vol_down": 310,
+        "media_vol_up": 311,
+        "media_next_track": 305,
+        "media_prev_track": 308,
+        "terminal_enter": 305,
+        "terminal_backspace": 304,
+        "terminal_tab": 310,
+        "terminal_esc": 304,
+        "slide_next": 305,
+        "slide_prev": 304,
+    },
+    "xbox": {
+        "name": "Microsoft Xbox Controller",
+        "left_click": 313,
+        "right_click": 311,
+        "middle_click": 312,
+        "cycle_mode": 315,
+        "screenshot": 309,
+        "home": 316,
+        "media_play_pause": 304,
+        "media_vol_down": 310,
+        "media_vol_up": 311,
+        "media_next_track": 305,
+        "media_prev_track": 308,
+        "terminal_enter": 304,
+        "terminal_backspace": 305,
+        "terminal_tab": 310,
+        "terminal_esc": 305,
+        "slide_next": 305,
+        "slide_prev": 304,
+    },
+    "generic_gamepad": {
+        "name": "Universal Gamepad / Controller",
+        "left_click": 313,
+        "right_click": 311,
+        "middle_click": 312,
+        "trackpad_click": 272,
+        "cycle_mode": 315,
+        "screenshot": 309,
+        "home": 316,
+        "media_play_pause": 304,
+        "media_vol_down": 310,
+        "media_vol_up": 311,
+        "media_next_track": 305,
+        "media_prev_track": 308,
+        "terminal_enter": 305,
+        "terminal_backspace": 304,
+        "terminal_tab": 310,
+        "terminal_esc": 304,
+        "slide_next": 305,
+        "slide_prev": 304,
+    }
+}
+
+
 class ConfigManager:
-    """Manages user configuration in ~/.config/joycon-mouse/config.json."""
+    """Manages user configuration and controller mapping profiles."""
 
     DEFAULT_CONFIG = {
         "sensitivity": 1.0,
@@ -132,6 +238,33 @@ class ConfigManager:
         self.config_dir = config_dir or os.path.expanduser("~/.config/joycon-mouse")
         self.config_file = os.path.join(self.config_dir, "config.json")
         self.config = self.load_config()
+
+    def get_mappings_file(self) -> str:
+        return os.path.join(self.config_dir, "controller_mappings.json")
+
+    def load_all_mappings(self) -> Dict[str, Any]:
+        """Loads custom controller button mapping profiles from controller_mappings.json."""
+        path = self.get_mappings_file()
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict) and "profiles" in data:
+                        return data["profiles"]
+                    return data
+            except Exception:
+                pass
+        return dict(DEFAULT_CONTROLLER_PROFILES)
+
+    def save_all_mappings(self, profiles: Dict[str, Any]) -> None:
+        """Persists custom controller button mapping profiles to disk."""
+        path = self.get_mappings_file()
+        try:
+            os.makedirs(self.config_dir, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"version": "1.0", "profiles": profiles}, f, indent=4)
+        except Exception as e:
+            print(f"[Config Error] Could not save {path}: {e}")
 
     def load_config(self) -> Dict[str, Any]:
         cfg = dict(self.DEFAULT_CONFIG)
@@ -571,6 +704,221 @@ class JoystickFilter:
         return pixel_dx, pixel_dy
 
 
+class TouchpadFilter:
+    """Processes multi-touch trackpad events for PlayStation (DualSense/DualShock 4) and universal gamepads.
+
+    Features:
+    - High-precision glide pointer navigation with subpixel accuracy.
+    - Physical mechanical trackpad button click (BTN_LEFT) for tactile, drift-free clicks.
+    - Sensitive tap-to-click detection for effortless clicking without stick jitter.
+    - Two-finger tap / right-zone click for context menu (Right Click).
+    """
+
+    def __init__(self, sensitivity: float = 1.0, tap_to_click: bool = True):
+        self.sensitivity = sensitivity
+        self.tap_to_click = tap_to_click
+        self.tracking_id: Optional[int] = None
+        self.touch_active = False
+        self.touch_start_time = 0.0
+        self.touch_start_x = 0
+        self.touch_start_y = 0
+        self.curr_x: Optional[int] = None
+        self.curr_y: Optional[int] = None
+        self.prev_x: Optional[int] = None
+        self.prev_y: Optional[int] = None
+        self.finger_count = 0
+        self.subpixel_x = 0.0
+        self.subpixel_y = 0.0
+
+    def update_abs(self, code: int, value: int, uinput: 'VirtualMouseDevice') -> None:
+        if code == 0x39:  # ABS_MT_TRACKING_ID
+            if value >= 0:
+                self.tracking_id = value
+                self.touch_active = True
+                self.touch_start_time = time.perf_counter()
+                self.prev_x = None
+                self.prev_y = None
+            else:
+                if self.touch_active and self.tap_to_click:
+                    duration = time.perf_counter() - self.touch_start_time
+                    if duration < 0.22:
+                        dist = math.hypot(
+                            (self.curr_x or 0) - self.touch_start_x,
+                            (self.curr_y or 0) - self.touch_start_y
+                        )
+                        if dist < 32.0:
+                            click_btn = MOUSE_BTN_RIGHT if self.finger_count >= 2 else MOUSE_BTN_LEFT
+                            uinput.emit_key(click_btn, 1)
+                            uinput.emit_key(click_btn, 0)
+                self.tracking_id = None
+                self.touch_active = False
+                self.curr_x = None
+                self.curr_y = None
+                self.prev_x = None
+                self.prev_y = None
+
+        elif code in (0x35, 0x00):  # ABS_MT_POSITION_X or ABS_X
+            self.curr_x = value
+            if self.touch_start_x == 0 and self.touch_active:
+                self.touch_start_x = value
+
+        elif code in (0x36, 0x01):  # ABS_MT_POSITION_Y or ABS_Y
+            self.curr_y = value
+            if self.touch_start_y == 0 and self.touch_active:
+                self.touch_start_y = value
+
+    def process_sync(self, uinput: 'VirtualMouseDevice') -> None:
+        """Flushes trackpad motion deltas with subpixel precision on SYN_REPORT."""
+        if not self.touch_active or self.curr_x is None or self.curr_y is None:
+            return
+
+        if self.prev_x is not None and self.prev_y is not None:
+            raw_dx = self.curr_x - self.prev_x
+            raw_dy = self.curr_y - self.prev_y
+
+            scale = 0.38 * self.sensitivity
+            self.subpixel_x += raw_dx * scale
+            self.subpixel_y += raw_dy * scale
+
+            pdx = int(self.subpixel_x)
+            pdy = int(self.subpixel_y)
+
+            if pdx != 0 or pdy != 0:
+                self.subpixel_x -= pdx
+                self.subpixel_y -= pdy
+                uinput.move_cursor(pdx, pdy)
+
+        self.prev_x = self.curr_x
+        self.prev_y = self.curr_y
+
+    def handle_key(self, code: int, value: int, uinput: 'VirtualMouseDevice') -> bool:
+        """Handles physical trackpad mechanical click and multi-touch gestures."""
+        if code in (0x110, 0x14a):  # BTN_LEFT / BTN_TOUCH
+            if code == 0x110:
+                btn = MOUSE_BTN_LEFT
+                if self.curr_x is not None and self.curr_x > 1150:
+                    btn = MOUSE_BTN_RIGHT
+                elif self.finger_count >= 2:
+                    btn = MOUSE_BTN_RIGHT
+                uinput.emit_key(btn, value)
+                return True
+        elif code == 0x145:  # BTN_TOOL_FINGER
+            if value == 1:
+                self.finger_count = 1
+            elif self.finger_count == 1:
+                self.finger_count = 0
+            return True
+        elif code == 0x14d:  # BTN_TOOL_DOUBLETAP
+            if value == 1:
+                self.finger_count = 2
+            elif self.finger_count == 2:
+                self.finger_count = 1
+            return True
+        return False
+
+
+def wait_for_linux_button_press(device_paths: List[str], timeout_sec: float = 12.0) -> Optional[int]:
+    """Polls evdev descriptors for the next pressed button, debounces release, and returns keycode."""
+    fds = []
+    for p in device_paths:
+        try:
+            fd = os.open(p, os.O_RDONLY | os.O_NONBLOCK)
+            fds.append(fd)
+        except OSError:
+            pass
+
+    if not fds:
+        return None
+
+    try:
+        poll_obj = select.poll()
+        for fd in fds:
+            poll_obj.register(fd, select.POLLIN)
+
+        start_t = time.perf_counter()
+        while (time.perf_counter() - start_t) < timeout_sec:
+            events = poll_obj.poll(50)
+            for fd, mask in events:
+                if mask & select.POLLIN:
+                    try:
+                        data = os.read(fd, EVENT_STRUCT_SIZE * 16)
+                    except OSError:
+                        continue
+                    n_evs = len(data) // EVENT_STRUCT_SIZE
+                    for i in range(n_evs):
+                        chunk = data[i * EVENT_STRUCT_SIZE : (i + 1) * EVENT_STRUCT_SIZE]
+                        _, _, ev_type, code, val = struct.unpack(EVENT_STRUCT_FORMAT, chunk)
+                        if ev_type == EVENT_KEY and val == 1:
+                            # Debounce release
+                            drain_t = time.perf_counter()
+                            while (time.perf_counter() - drain_t) < 0.25:
+                                try:
+                                    drain = os.read(fd, EVENT_STRUCT_SIZE * 16)
+                                except OSError:
+                                    break
+                                time.sleep(0.02)
+                            return code
+            time.sleep(0.02)
+        return None
+    finally:
+        for fd in fds:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+
+
+def run_linux_mapping_wizard(device_name: str, device_paths: List[str], config_mgr: ConfigManager) -> Dict[str, Any]:
+    """Interactive Guided Controller Button Calibration Wizard for Linux."""
+    print("\n" + "=" * 76)
+    print("  🎮 UNIVERSAL CONTROLLER BUTTON MAPPING WIZARD (LINUX)")
+    print(f"  Target Device: {device_name}")
+    print("  Press the button on your controller for each requested action.")
+    print("  (Wait 10s or press Ctrl+C to keep default)")
+    print("=" * 76 + "\n")
+
+    steps = [
+        ("left_click", "LEFT CLICK (Primary action / select)", 313),
+        ("right_click", "RIGHT CLICK (Secondary action / context menu)", 311),
+        ("middle_click", "MIDDLE CLICK (Wheel click / new tab)", 312),
+        ("trackpad_click", "TRACKPAD MECHANICAL CLICK (Sensitive pinpoint click)", 272),
+        ("cycle_mode", "CYCLE MODES (Mouse / Media / Terminal / Presentation)", 315),
+        ("screenshot", "SCREENSHOT (Instant PrintScreen)", 309),
+        ("home", "HOME / SUPER (App Overview / Start Menu)", 316),
+        ("media_play_pause", "MEDIA PLAY / PAUSE", 304),
+        ("media_vol_down", "VOLUME DOWN", 310),
+        ("media_vol_up", "VOLUME UP", 311),
+        ("media_next_track", "NEXT TRACK", 305),
+        ("terminal_enter", "TERMINAL ENTER / SUBMIT", 305),
+        ("terminal_backspace", "TERMINAL BACKSPACE", 304),
+        ("terminal_tab", "TERMINAL TAB AUTO-COMPLETE", 310),
+        ("terminal_esc", "TERMINAL ESCAPE / CANCEL", 304),
+        ("slide_next", "PRESENTATION NEXT SLIDE", 305),
+        ("slide_prev", "PRESENTATION PREV SLIDE", 304),
+    ]
+
+    mapping = {"name": device_name}
+    default_ref = DEFAULT_CONTROLLER_PROFILES.get("generic_gamepad", {})
+
+    for key, prompt_label, default_code in steps:
+        print(f"👉 Press button for [{prompt_label}] [Default: Code {default_code}]... ", end="", flush=True)
+        detected = wait_for_linux_button_press(device_paths, timeout_sec=10.0)
+        if detected is not None:
+            mapping[key] = detected
+            print(f"✓ Assigned to Code {detected} (0x{detected:03x})!")
+        else:
+            mapping[key] = default_ref.get(key, default_code)
+            print(f"Using default (Code {mapping[key]})")
+
+    all_profiles = config_mgr.load_all_mappings()
+    all_profiles[device_name] = mapping
+    config_mgr.save_all_mappings(all_profiles)
+
+    print(f"\n✅ Successfully saved button mapping profile for '{device_name}'!")
+    print(f"   Saved to: {config_mgr.get_mappings_file()}\n")
+    return mapping
+
+
 @dataclass
 class ControllerNode:
     path: str
@@ -595,7 +943,12 @@ def classify_device(device_name: str, event_path: str) -> Optional[ControllerNod
     elif "pro controller" in name_lower or "switch pro" in name_lower:
         dev_type = "switch_pro"
     elif any(ps in name_lower for ps in ["dualsense", "dualshock", "playstation", "sony"]):
-        dev_type = "playstation"
+        if "touchpad" in name_lower or "trackpad" in name_lower:
+            dev_type = "playstation_touchpad"
+        else:
+            dev_type = "playstation"
+    elif "touchpad" in name_lower or "trackpad" in name_lower:
+        dev_type = "generic_touchpad"
     elif any(xb in name_lower for xb in ["xbox", "x-box", "microsoft"]):
         dev_type = "xbox"
     elif any(gp in name_lower for gp in ["gamepad", "joystick", "controller", "8bitdo"]):
@@ -690,6 +1043,18 @@ def run_controller_session(
     open_descriptors: Dict[int, ControllerNode] = {}
     poll_object = select.poll()
     joystick_filters: Dict[str, JoystickFilter] = {}
+    touchpad_filter = TouchpadFilter(sensitivity=profile.joystick.speed_x / 36.0)
+
+    cfg_mgr = ConfigManager()
+    all_mappings = cfg_mgr.load_all_mappings()
+    custom_map = None
+    for p_node in pads:
+        if p_node.name in all_mappings:
+            custom_map = all_mappings[p_node.name]
+            log.log(f"Loaded custom button mapping for '{p_node.name}'", level="INFO")
+            break
+    if not custom_map and profile.name in all_mappings:
+        custom_map = all_mappings[profile.name]
 
     for pad_node in pads:
         try:
@@ -835,7 +1200,27 @@ def run_controller_session(
                         event_chunk = raw_data[offset : offset + EVENT_STRUCT_SIZE]
                         _, _, event_type, code, value = struct.unpack(EVENT_STRUCT_FORMAT, event_chunk)
 
-                        if event_type == EVENT_KEY:
+                        if event_type == 0x00:  # EVENT_SYN
+                            touchpad_filter.process_sync(uinput)
+                            continue
+
+                        elif event_type == EVENT_ABS:
+                            if code in (0x35, 0x36, 0x39):
+                                touchpad_filter.update_abs(code, value, uinput)
+                            elif code in (0x00, 0x01, 0x03, 0x04):
+                                if node_info.device_type in ("playstation_touchpad", "generic_touchpad"):
+                                    touchpad_filter.update_abs(code, value, uinput)
+                                else:
+                                    j_filter = joystick_filters.get(node_info.path)
+                                    if j_filter is not None:
+                                        j_filter.update_axis(code, value)
+                            continue
+
+                        elif event_type == EVENT_KEY:
+                            if node_info.device_type in ("playstation_touchpad", "generic_touchpad") or code in (0x110, 0x14a, 0x145, 0x14d):
+                                if touchpad_filter.handle_key(code, value, uinput):
+                                    continue
+
                             if value == 1 and security_mgr:
                                 if security_mgr.process_key_event(code, node_info.device_type, uinput):
                                     if rumble:
@@ -845,7 +1230,27 @@ def run_controller_session(
                             active_mode = get_current_mode()
                             lookup_type = "dual_joycon" if profile.name == "dual_joycon" else node_info.device_type
                             button_map = active_mode.get_button_map(lookup_type)
-                            action_config = button_map.get(code)
+
+                            # Check custom mapping overrides
+                            action_config = None
+                            if custom_map is not None:
+                                if code == custom_map.get("trackpad_click"):
+                                    action_config = {"action": "mouse_btn", "code": MOUSE_BTN_LEFT}
+                                elif code == custom_map.get("left_click"):
+                                    action_config = {"action": "mouse_btn", "code": MOUSE_BTN_LEFT}
+                                elif code == custom_map.get("right_click"):
+                                    action_config = {"action": "mouse_btn", "code": MOUSE_BTN_RIGHT}
+                                elif code == custom_map.get("middle_click"):
+                                    action_config = {"action": "mouse_btn", "code": MOUSE_BTN_MIDDLE}
+                                elif code == custom_map.get("cycle_mode"):
+                                    action_config = {"action": "mode_cycle"}
+                                elif code == custom_map.get("screenshot"):
+                                    action_config = {"action": "key", "code": KEY_CODE_SYSRQ}
+                                elif code == custom_map.get("home"):
+                                    action_config = {"action": "smart_home"}
+
+                            if action_config is None:
+                                action_config = button_map.get(code)
 
                             if log.debug:
                                 log.log(f"Key Event: code={code} (0x{code:03x}) val={value} on {node_info.name}", level="DEBUG")
@@ -891,12 +1296,6 @@ def run_controller_session(
                                         last_scroll_timestamp = time.perf_counter()
                                     elif value == 0 and active_scroll_direction == action_config.get("param", 0):
                                         active_scroll_direction = 0
-
-                        elif event_type == EVENT_ABS:
-                            if code in (0x00, 0x01, 0x03, 0x04):
-                                j_filter = joystick_filters.get(node_info.path)
-                                if j_filter is not None:
-                                    j_filter.update_axis(code, value)
 
             if smart_press_timestamp is not None and not smart_hold_triggered:
                 if (now_time - smart_press_timestamp) >= hold_threshold_sec:
@@ -1108,8 +1507,46 @@ def main() -> int:
     parser.add_argument("--no-rumble", action="store_true", help="Disable physical haptic vibration feedback.")
     parser.add_argument("--no-grab", action="store_true", help="Disable exclusive device grabbing (not recommended with Steam).")
     parser.add_argument("-v", "--verbose", "--debug", dest="debug", action="store_true", help="Print real-time debug events.")
+    parser.add_argument("--map", "--configure", action="store_true",
+                        help="Launch interactive guided button calibration wizard to configure controller buttons.")
+    parser.add_argument("--list-mappings", action="store_true",
+                        help="Display all saved controller button mapping profiles from controller_mappings.json.")
+    parser.add_argument("--check", action="store_true",
+                        help="Non-blocking device check (exits 0 if controller present, 1 otherwise).")
     parser.add_argument("--no-reconnect", action="store_true", help="Do not wait and auto-reconnect on disconnect.")
     args = parser.parse_args()
+
+    if args.check:
+        controllers = discover_input_devices()
+        if controllers:
+            first = controllers[0]
+            print(f"CONNECTED: {first.name} ({first.device_type}) -> {first.path}")
+            return 0
+        print("NO_CONTROLLER")
+        return 1
+
+    if args.list_mappings:
+        config_mgr = ConfigManager()
+        profiles = config_mgr.load_all_mappings()
+        print(f"\n🎮 Saved Controller Button Profiles ({config_mgr.get_mappings_file()}):\n")
+        for key, prof in profiles.items():
+            print(f"  • {key}:")
+            for action, btn in prof.items():
+                if action != "name":
+                    print(f"      - {action:18}: Code {btn} (0x{btn:03x})")
+        print()
+        return 0
+
+    if args.map:
+        config_mgr = ConfigManager()
+        controllers = discover_input_devices()
+        if not controllers:
+            print("[Error] No controller connected to map! Please connect your controller via USB or Bluetooth.")
+            return 1
+        target = controllers[0]
+        paths = [c.path for c in controllers if c.name == target.name or c.device_type == target.device_type]
+        run_linux_mapping_wizard(target.name, paths, config_mgr)
+        return 0
 
     if args.install_service:
         return install_systemd_service()
