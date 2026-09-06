@@ -188,6 +188,12 @@ try {
         [System.Environment]::SetEnvironmentVariable("Path", "$userPath;$InstallPath", "User")
         Write-Host "  [OK] Added '$InstallPath' to user PATH (enables 'joycon-mouse' command in CMD/PowerShell)." -ForegroundColor Green
     }
+    $winApps = Join-Path $env:LOCALAPPDATA "Microsoft\WindowsApps"
+    if (Test-Path $winApps) {
+        $shimContent = "@echo off`r`nsetlocal`r`npython `"$InstallPath\joycon-mouse.py`" %*"
+        Set-Content -Path (Join-Path $winApps "joycon-mouse.cmd") -Value $shimContent -Encoding ASCII
+        Write-Host "  [OK] Registered instant global command in WindowsApps: 'joycon-mouse'" -ForegroundColor Green
+    }
 } catch {
     Write-Host "  [!] Notice: Could not update user PATH: $_" -ForegroundColor Yellow
 }

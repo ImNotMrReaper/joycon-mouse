@@ -101,14 +101,35 @@ if %errorlevel% equ 0 (
     echo   [!] Warning: Could not create shortcuts automatically. You can always run run_windows.bat directly.
 )
 
-:: Step 4: Installation complete!
+:: Step 4: Configure Global Terminal Command (joycon-mouse)
+echo.
+echo [Step 4/5] Configuring global terminal command 'joycon-mouse'...
+set "WINAPPS_DIR=%LOCALAPPDATA%\Microsoft\WindowsApps"
+if exist "%WINAPPS_DIR%" (
+    (
+        echo @echo off
+        echo setlocal
+        echo python "%INSTALL_DIR%\joycon-mouse.py" %%*
+    ) > "%WINAPPS_DIR%\joycon-mouse.cmd"
+    echo   [OK] Registered global command: '%WINAPPS_DIR%\joycon-mouse.cmd'
+)
+
+powershell -NoProfile -Command ^
+  "$userPath = [Environment]::GetEnvironmentVariable('Path', 'User'); " ^
+  "if ($userPath -notlike '*%INSTALL_DIR%*') { " ^
+  "  [Environment]::SetEnvironmentVariable('Path', $userPath + ';%INSTALL_DIR%', 'User'); " ^
+  "  Write-Host '  [OK] Added installation directory to User PATH.' " ^
+  "}"
+
+:: Step 5: Installation complete!
 echo.
 echo ================================================================================
 echo   [SUCCESS] JOY-CON MOUSE IS INSTALLED!
 echo ================================================================================
 echo.
-echo   You can now launch Joy-Con Mouse anytime from your Desktop shortcut
-echo   or by double-clicking 'run_windows.bat'.
+echo   You can now launch Joy-Con Mouse anytime by simply typing:
+echo     joycon-mouse
+echo   in any terminal (CMD, PowerShell, PyCharm), or via Desktop shortcut.
 echo.
 
 set /p "LAUNCH_NOW=Would you like to start Joy-Con Mouse right now? [Y/n]: "
