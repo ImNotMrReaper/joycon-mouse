@@ -17,3 +17,6 @@ security_manager.py
 .idea/
 .vscode/
 .DS_Store
+
+# Antigravity Link Peer Sync
+.agy_link/

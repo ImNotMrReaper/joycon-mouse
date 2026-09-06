@@ -99,33 +99,8 @@ if IS_WINDOWS:
     KEYEVENTF_KEYUP = 0x0002
     KEYEVENTF_EXTENDEDKEY = 0x0001
 
-    # Multimedia virtual keycodes
-    VK_VOLUME_MUTE = 0xAD
-    VK_VOLUME_DOWN = 0xAE
-    VK_VOLUME_UP = 0xAF
-    VK_MEDIA_NEXT_TRACK = 0xB0
-    VK_MEDIA_PREV_TRACK = 0xB1
-    VK_MEDIA_STOP = 0xB2
-    VK_MEDIA_PLAY_PAUSE = 0xB3
-    VK_RIGHT = 0x27
-    VK_LEFT = 0x25
-    VK_SPACE = 0x20
-    VK_ESCAPE = 0x1B
-    VK_F5 = 0x74
-    VK_SNAPSHOT = 0x2C         # PrintScreen / Instant Screenshot
-    VK_LWIN = 0x5B             # Left Windows / Start / Overview Key
-    VK_RETURN = 0x0D           # Enter / Submit
-    VK_BACK = 0x08             # Backspace
-    VK_TAB = 0x09              # Tab Auto-Complete
-    VK_UP = 0x26               # Arrow Up (History Up)
-    VK_DOWN = 0x28             # Arrow Down (History Down)
-    VK_CONTROL = 0x11          # Left Ctrl
-    VK_C = 0x43                # C key
-    VK_T = 0x54                # T key
-    VK_W = 0x57                # W key
-    VK_R = 0x52                # R key
-    VK_BROWSER_BACK = 0xA6     # Browser Back
-    VK_BROWSER_FORWARD = 0xA7  # Browser Forward
+    # Extended keycodes handled by Windows
+    pass
 else:
     class JOYINFOEX:
         pass
@@ -139,6 +114,55 @@ else:
     winmm = None
     user32 = None
 
+# Multimedia virtual keycodes (Win32 Virtual-Key Codes)
+VK_LBUTTON = 0x01
+VK_RBUTTON = 0x02
+VK_MBUTTON = 0x04
+VK_BACK = 0x08             # Backspace
+VK_TAB = 0x09              # Tab Auto-Complete
+VK_RETURN = 0x0D           # Enter / Submit
+VK_SHIFT = 0x10            # Left Shift
+VK_CONTROL = 0x11          # Left Ctrl
+VK_MENU = 0x12             # Alt
+VK_ESCAPE = 0x1B           # Escape
+VK_SPACE = 0x20            # Spacebar
+VK_PRIOR = 0x21            # Page Up
+VK_NEXT = 0x22             # Page Down
+VK_END = 0x23
+VK_HOME = 0x24
+VK_LEFT = 0x25             # Arrow Left
+VK_UP = 0x26               # Arrow Up
+VK_RIGHT = 0x27            # Arrow Right
+VK_DOWN = 0x28             # Arrow Down
+VK_SNAPSHOT = 0x2C         # PrintScreen / Instant Screenshot
+VK_B = 0x42                # B key (Black screen in presentation)
+VK_C = 0x43                # C key (Subtitles / Captions)
+VK_D = 0x44                # D key (Win+D show desktop, Ctrl+D EOF)
+VK_F = 0x46                # F key (Fullscreen toggle)
+VK_I = 0x49                # I key (Inventory)
+VK_L = 0x4C                # L key (Ctrl+L clear screen)
+VK_M = 0x4D                # M key (Map)
+VK_R = 0x52                # R key (Ctrl+R reload page)
+VK_T = 0x54                # T key (YouTube theater mode)
+VK_U = 0x55                # U key (Ctrl+U erase line)
+VK_W = 0x57                # W key (Ctrl+W close tab, White screen)
+VK_Y = 0x59                # Y key (Quick 'y')
+VK_Z = 0x5A                # Z key (Ctrl+Z suspend)
+VK_LWIN = 0x5B             # Left Windows / Start / Overview Key
+VK_F4 = 0x73
+VK_F5 = 0x74               # F5 Slideshow start
+VK_F9 = 0x78
+VK_F11 = 0x7A
+VK_BROWSER_BACK = 0xA6     # Browser Back
+VK_BROWSER_FORWARD = 0xA7  # Browser Forward
+VK_VOLUME_MUTE = 0xAD      # Volume Mute
+VK_VOLUME_DOWN = 0xAE      # Volume Down
+VK_VOLUME_UP = 0xAF        # Volume Up
+VK_MEDIA_NEXT_TRACK = 0xB0 # Next Track
+VK_MEDIA_PREV_TRACK = 0xB1 # Previous Track
+VK_MEDIA_STOP = 0xB2
+VK_MEDIA_PLAY_PAUSE = 0xB3 # Play / Pause
+
 # ANSI Colors
 BOLD = "\033[1m"
 CYAN = "\033[96m"
@@ -149,83 +173,291 @@ RED = "\033[91m"
 DIM = "\033[2m"
 RESET = "\033[0m"
 
+# Canonical Mode Button Maps across All Controller Types (1:1 Linux Behavioral Parity)
+MODE_MAPS = {
+    "DESKTOP MOUSE": {
+        "right_joycon": {
+            15: {"action": "mouse_btn", "code": "left", "desc": "ZR (Trigger) -> Left Click"},
+            14: {"action": "mouse_btn", "code": "right", "desc": "R (Bumper) -> Right Click"},
+            4: {"action": "key", "code": VK_ESCAPE, "desc": "Side SL -> Escape"},
+            5: {"action": "key", "code": VK_RETURN, "desc": "Side SR -> Enter / Open"},
+            1: {"action": "scroll", "param": 1, "desc": "X -> Scroll Up"},
+            2: {"action": "scroll", "param": -1, "desc": "B -> Scroll Down"},
+            3: {"action": "key", "code": VK_BROWSER_BACK, "desc": "Y -> Browser Back"},
+            0: {"action": "key", "code": VK_BROWSER_FORWARD, "desc": "A -> Browser Forward"},
+            11: {"action": "mouse_btn", "code": "middle", "desc": "Stick Click -> Middle Click"},
+            12: {"action": "smart_home", "desc": "Home -> Tap: Super/Win | Hold: Screenshot"},
+            9: {"action": "mode_cycle", "desc": "+ -> Cycle Mode"},
+        },
+        "left_joycon": {
+            15: {"action": "mouse_btn", "code": "left", "desc": "ZL (Trigger) -> Left Click"},
+            14: {"action": "mouse_btn", "code": "right", "desc": "L (Bumper) -> Right Click"},
+            4: {"action": "key", "code": VK_ESCAPE, "desc": "Side SL -> Escape"},
+            5: {"action": "key", "code": VK_RETURN, "desc": "Side SR -> Enter / Open"},
+            3: {"action": "scroll", "param": 1, "desc": "Up (Face) -> Scroll Up"},
+            0: {"action": "scroll", "param": -1, "desc": "Down (Face) -> Scroll Down"},
+            2: {"action": "key", "code": VK_BROWSER_BACK, "desc": "Left (Face) -> Browser Back"},
+            1: {"action": "key", "code": VK_BROWSER_FORWARD, "desc": "Right (Face) -> Browser Forward"},
+            10: {"action": "mouse_btn", "code": "middle", "desc": "Stick Click -> Middle Click"},
+            13: {"action": "smart_home", "desc": "Capture -> Tap: Super/Win | Hold: Screenshot"},
+            8: {"action": "mode_cycle", "desc": "- -> Cycle Mode"},
+        },
+        "playstation": {
+            7: {"action": "mouse_btn", "code": "left", "desc": "R2 -> Left Click"},
+            5: {"action": "mouse_btn", "code": "right", "desc": "R1 -> Right Click"},
+            6: {"action": "mouse_btn", "code": "middle", "desc": "L2 -> Middle Click (New Tab / Auto-Scroll)"},
+            4: {"action": "combo", "keys": [VK_CONTROL, VK_W], "desc": "L1 -> Close Tab (Ctrl+W)"},
+            2: {"action": "key", "code": VK_RETURN, "desc": "Circle (East) -> Enter / Open"},
+            1: {"action": "key", "code": VK_ESCAPE, "desc": "Cross (South) -> Escape / Dismiss"},
+            3: {"action": "combo", "keys": [VK_CONTROL, VK_T], "desc": "Triangle (North) -> New Tab (Ctrl+T)"},
+            0: {"action": "key", "code": VK_SPACE, "desc": "Square (West) -> Spacebar (Scroll Down / Play-Pause)"},
+            10: {"action": "combo", "keys": [VK_LWIN, VK_D], "desc": "L3 -> Show Desktop (Win+D)"},
+            11: {"action": "combo", "keys": [VK_CONTROL, VK_R], "desc": "R3 -> Reload Page (Ctrl+R)"},
+            9: {"action": "mode_cycle", "desc": "Options -> Cycle Mode Forward"},
+            8: {"action": "combo", "keys": [VK_CONTROL, VK_PRIOR], "desc": "Share -> Previous Tab (Ctrl+PageUp)"},
+            12: {"action": "smart_home", "desc": "PS Button -> Tap: Super/Win | Hold: Screenshot"},
+            13: {"action": "mouse_btn", "code": "left", "desc": "Trackpad Click -> Left Click"},
+        },
+        "dual_joycon": {
+            7: {"action": "mouse_btn", "code": "left", "desc": "RT / ZR -> Left Click"},
+            5: {"action": "mouse_btn", "code": "right", "desc": "RB / R -> Right Click"},
+            6: {"action": "mouse_btn", "code": "middle", "desc": "LT / ZL -> Middle Click (New Tab / Auto-Scroll)"},
+            4: {"action": "combo", "keys": [VK_CONTROL, VK_W], "desc": "LB / L -> Close Tab (Ctrl+W)"},
+            1: {"action": "key", "code": VK_RETURN, "desc": "B / East -> Enter / Open"},
+            0: {"action": "key", "code": VK_ESCAPE, "desc": "A / South -> Escape / Dismiss"},
+            3: {"action": "combo", "keys": [VK_CONTROL, VK_T], "desc": "Y / North -> New Tab (Ctrl+T)"},
+            2: {"action": "key", "code": VK_SPACE, "desc": "X / West -> Spacebar (Scroll Down / Play-Pause)"},
+            10: {"action": "combo", "keys": [VK_LWIN, VK_D], "desc": "L3 -> Show Desktop (Win+D)"},
+            11: {"action": "combo", "keys": [VK_CONTROL, VK_R], "desc": "R3 -> Reload Page (Ctrl+R)"},
+            8: {"action": "combo", "keys": [VK_CONTROL, VK_PRIOR], "desc": "Select / - -> Previous Tab (Ctrl+PageUp)"},
+            9: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode Forward"},
+            12: {"action": "smart_home", "desc": "Guide / Home -> Tap: Super/Win | Hold: Screenshot"},
+            13: {"action": "key", "code": VK_SNAPSHOT, "desc": "Capture / Share -> Instant Screenshot"},
+        },
+    },
+    "UNIVERSAL MEDIA REMOTE": {
+        "right_joycon": {
+            15: {"action": "media_play_pause", "desc": "ZR (Trigger) -> Play / Pause"},
+            14: {"action": "key", "code": VK_VOLUME_MUTE, "desc": "R (Bumper) -> Mute / Unmute"},
+            4: {"action": "key", "code": VK_VOLUME_DOWN, "desc": "Side SL -> Volume Down"},
+            5: {"action": "key", "code": VK_VOLUME_UP, "desc": "Side SR -> Volume Up"},
+            1: {"action": "key", "code": VK_C, "desc": "X -> Toggle Subtitles / Captions (C)"},
+            2: {"action": "key", "code": VK_LEFT, "desc": "B -> Instant Rewind (-10s)"},
+            3: {"action": "key", "code": VK_MEDIA_PREV_TRACK, "desc": "Y -> Previous Track / Replay"},
+            0: {"action": "key", "code": VK_MEDIA_NEXT_TRACK, "desc": "A -> Next Track / Skip"},
+            11: {"action": "key", "code": VK_F, "desc": "Stick Click -> Fullscreen Toggle (F)"},
+            12: {"action": "smart_home", "desc": "Home -> Tap: Super/Win | Hold: Screenshot"},
+            9: {"action": "mode_cycle", "desc": "+ -> Cycle Mode"},
+        },
+        "left_joycon": {
+            15: {"action": "media_play_pause", "desc": "ZL (Trigger) -> Play / Pause"},
+            14: {"action": "key", "code": VK_VOLUME_MUTE, "desc": "L (Bumper) -> Mute / Unmute"},
+            4: {"action": "key", "code": VK_VOLUME_UP, "desc": "Side SL (Right) -> Volume Up"},
+            5: {"action": "key", "code": VK_VOLUME_DOWN, "desc": "Side SR (Left) -> Volume Down"},
+            3: {"action": "key", "code": VK_C, "desc": "Up (Face) -> Toggle Subtitles (C)"},
+            0: {"action": "key", "code": VK_LEFT, "desc": "Down (Face) -> Instant Rewind (-10s)"},
+            2: {"action": "key", "code": VK_MEDIA_PREV_TRACK, "desc": "Left (Face) -> Previous Track"},
+            1: {"action": "key", "code": VK_MEDIA_NEXT_TRACK, "desc": "Right (Face) -> Next Track"},
+            10: {"action": "key", "code": VK_F, "desc": "Stick Click -> Fullscreen Toggle (F)"},
+            13: {"action": "smart_home", "desc": "Capture -> Tap: Super/Win | Hold: Screenshot"},
+            8: {"action": "mode_cycle", "desc": "- -> Cycle Mode"},
+        },
+        "playstation": {
+            7: {"action": "media_play_pause", "desc": "R2 -> Play / Pause"},
+            5: {"action": "key", "code": VK_RIGHT, "desc": "R1 -> Fast Forward (+10s)"},
+            6: {"action": "key", "code": VK_VOLUME_MUTE, "desc": "L2 -> Mute Audio"},
+            4: {"action": "key", "code": VK_LEFT, "desc": "L1 -> Instant Rewind (-10s)"},
+            2: {"action": "key", "code": VK_RETURN, "desc": "Circle (East) -> Enter / Play / Confirm"},
+            1: {"action": "key", "code": VK_ESCAPE, "desc": "Cross (South) -> Escape / Exit Fullscreen"},
+            3: {"action": "key", "code": VK_C, "desc": "Triangle (North) -> Toggle Subtitles (C)"},
+            0: {"action": "key", "code": VK_F, "desc": "Square (West) -> Toggle Fullscreen (F)"},
+            10: {"action": "key", "code": VK_T, "desc": "L3 -> Theater Mode (T)"},
+            11: {"action": "key", "code": VK_SPACE, "desc": "R3 -> Pause / Space"},
+            9: {"action": "mode_cycle", "desc": "Options -> Cycle Mode Forward"},
+            8: {"action": "key", "code": VK_VOLUME_MUTE, "desc": "Share -> Mute Audio"},
+            12: {"action": "smart_home", "desc": "PS Button -> Tap: Super/Win | Hold: Screenshot"},
+            13: {"action": "media_play_pause", "desc": "Trackpad Click -> Play / Pause"},
+        },
+        "dual_joycon": {
+            7: {"action": "media_play_pause", "desc": "RT / ZR -> Play / Pause"},
+            5: {"action": "key", "code": VK_RIGHT, "desc": "RB / R -> Fast Forward (+10s)"},
+            6: {"action": "key", "code": VK_VOLUME_MUTE, "desc": "LT / ZL -> Mute Audio"},
+            4: {"action": "key", "code": VK_LEFT, "desc": "LB / L -> Instant Rewind (-10s)"},
+            1: {"action": "key", "code": VK_RETURN, "desc": "B / East -> Enter / Play / Confirm"},
+            0: {"action": "key", "code": VK_ESCAPE, "desc": "A / South -> Escape / Exit Fullscreen"},
+            3: {"action": "key", "code": VK_C, "desc": "Y / North -> Toggle Subtitles (C)"},
+            2: {"action": "key", "code": VK_F, "desc": "X / West -> Toggle Fullscreen (F)"},
+            10: {"action": "key", "code": VK_T, "desc": "L3 -> Theater Mode (T)"},
+            11: {"action": "key", "code": VK_SPACE, "desc": "R3 -> Pause / Space"},
+            8: {"action": "key", "code": VK_VOLUME_MUTE, "desc": "Select / - -> Mute Audio"},
+            9: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode Forward"},
+            12: {"action": "smart_home", "desc": "Guide / Home -> Tap: Super/Win | Hold: Screenshot"},
+            13: {"action": "key", "code": VK_SNAPSHOT, "desc": "Capture / Share -> Instant Screenshot"},
+        },
+    },
+    "INTERACTIVE TERMINAL": {
+        "right_joycon": {
+            15: {"action": "key", "code": VK_RETURN, "desc": "ZR (Trigger) -> Enter / Submit"},
+            14: {"action": "key", "code": VK_BACK, "desc": "R (Bumper) -> Backspace / Erase"},
+            4: {"action": "key", "code": VK_TAB, "desc": "Side SL -> Tab Auto-Complete"},
+            5: {"action": "key", "code": VK_ESCAPE, "desc": "Side SR -> Escape / Cancel"},
+            1: {"action": "key", "code": VK_UP, "desc": "X (Up) -> Up Arrow (Select Up / History Up)"},
+            2: {"action": "key", "code": VK_DOWN, "desc": "B (Down) -> Down Arrow (Select Down / History Down)"},
+            3: {"action": "key", "code": VK_LEFT, "desc": "Y (Left) -> Left Arrow (Move Cursor Left)"},
+            0: {"action": "key", "code": VK_RIGHT, "desc": "A (Right) -> Right Arrow (Move Cursor Right)"},
+            11: {"action": "combo", "keys": [VK_CONTROL, VK_C], "desc": "Stick Click -> Interrupt (Ctrl+C)"},
+            12: {"action": "smart_home", "desc": "Home -> Tap: Super/Win | Hold: Screenshot"},
+            9: {"action": "mode_cycle", "desc": "+ -> Cycle Mode"},
+        },
+        "left_joycon": {
+            15: {"action": "key", "code": VK_RETURN, "desc": "ZL (Trigger) -> Enter / Submit"},
+            14: {"action": "key", "code": VK_BACK, "desc": "L (Bumper) -> Backspace / Erase"},
+            4: {"action": "key", "code": VK_TAB, "desc": "Side SL -> Tab Auto-Complete"},
+            5: {"action": "key", "code": VK_ESCAPE, "desc": "Side SR -> Escape / Cancel"},
+            3: {"action": "key", "code": VK_UP, "desc": "Up (Face) -> Up Arrow (Select Up / History Up)"},
+            0: {"action": "key", "code": VK_DOWN, "desc": "Down (Face) -> Down Arrow (Select Down / History Down)"},
+            2: {"action": "key", "code": VK_LEFT, "desc": "Left (Face) -> Left Arrow (Move Cursor Left)"},
+            1: {"action": "key", "code": VK_RIGHT, "desc": "Right (Face) -> Right Arrow (Move Cursor Right)"},
+            10: {"action": "combo", "keys": [VK_CONTROL, VK_C], "desc": "Stick Click -> Interrupt (Ctrl+C)"},
+            13: {"action": "smart_home", "desc": "Capture -> Tap: Super/Win | Hold: Screenshot"},
+            8: {"action": "mode_cycle", "desc": "- -> Cycle Mode"},
+        },
+        "playstation": {
+            7: {"action": "key", "code": VK_TAB, "desc": "R2 -> Tab Auto-Complete"},
+            5: {"action": "combo", "keys": [VK_CONTROL, VK_C], "desc": "R1 -> Interrupt (Ctrl+C)"},
+            6: {"action": "key", "code": VK_ESCAPE, "desc": "L2 -> Escape / Cancel"},
+            4: {"action": "combo", "keys": [VK_CONTROL, VK_L], "desc": "L1 -> Clear Screen (Ctrl+L)"},
+            2: {"action": "key", "code": VK_RETURN, "desc": "Circle (East) -> Enter / Confirm Selection"},
+            1: {"action": "key", "code": VK_BACK, "desc": "Cross (South) -> Backspace / Erase"},
+            3: {"action": "key", "code": VK_Y, "desc": "Triangle (North) -> Quick 'y' (Yes)"},
+            0: {"action": "combo", "keys": [VK_CONTROL, VK_U], "desc": "Square (West) -> Erase Line (Ctrl+U)"},
+            10: {"action": "combo", "keys": [VK_CONTROL, VK_Z], "desc": "L3 -> Suspend Job (Ctrl+Z)"},
+            11: {"action": "combo", "keys": [VK_CONTROL, VK_D], "desc": "R3 -> EOF / Exit (Ctrl+D)"},
+            9: {"action": "mode_cycle", "desc": "Options -> Cycle Mode Forward"},
+            8: {"action": "key", "code": VK_PRIOR, "desc": "Share -> Page Up"},
+            12: {"action": "smart_home", "desc": "PS Button -> Tap: Super/Win | Hold: Screenshot"},
+            13: {"action": "key", "code": VK_RETURN, "desc": "Trackpad Click -> Enter / Submit"},
+        },
+        "dual_joycon": {
+            7: {"action": "key", "code": VK_TAB, "desc": "RT / ZR -> Tab Auto-Complete"},
+            5: {"action": "combo", "keys": [VK_CONTROL, VK_C], "desc": "RB / R -> Interrupt (Ctrl+C)"},
+            6: {"action": "key", "code": VK_ESCAPE, "desc": "LT / ZL -> Escape / Cancel"},
+            4: {"action": "combo", "keys": [VK_CONTROL, VK_L], "desc": "LB / L -> Clear Screen (Ctrl+L)"},
+            1: {"action": "key", "code": VK_RETURN, "desc": "B / East -> Enter / Confirm Selection"},
+            0: {"action": "key", "code": VK_BACK, "desc": "A / South -> Backspace / Erase"},
+            3: {"action": "key", "code": VK_Y, "desc": "Y / North -> Quick 'y' (Yes)"},
+            2: {"action": "combo", "keys": [VK_CONTROL, VK_U], "desc": "X / West -> Erase Line (Ctrl+U)"},
+            10: {"action": "combo", "keys": [VK_CONTROL, VK_Z], "desc": "L3 -> Suspend Job (Ctrl+Z)"},
+            11: {"action": "combo", "keys": [VK_CONTROL, VK_D], "desc": "R3 -> EOF / Exit (Ctrl+D)"},
+            8: {"action": "key", "code": VK_PRIOR, "desc": "Select / - -> Page Up"},
+            9: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode Forward"},
+            12: {"action": "smart_home", "desc": "Guide / Home -> Tap: Super/Win | Hold: Screenshot"},
+            13: {"action": "key", "code": VK_SNAPSHOT, "desc": "Capture / Share -> Instant Screenshot"},
+        },
+    },
+    "PRESENTATION CLICKER": {
+        "right_joycon": {
+            15: {"action": "key", "code": VK_SPACE, "desc": "ZR (Trigger) -> Next Slide (Space)"},
+            14: {"action": "key", "code": VK_BACK, "desc": "R (Bumper) -> Previous Slide (Backspace)"},
+            0: {"action": "key", "code": VK_SPACE, "desc": "A -> Next Slide (Space)"},
+            2: {"action": "key", "code": VK_BACK, "desc": "B -> Previous Slide (Backspace)"},
+            1: {"action": "key", "code": VK_F5, "desc": "X -> Start Presentation (F5)"},
+            3: {"action": "key", "code": VK_B, "desc": "Y -> Black / Blank Screen (B)"},
+            11: {"action": "key", "code": VK_ESCAPE, "desc": "Stick Click -> Exit Slideshow (Esc)"},
+            12: {"action": "smart_home", "desc": "Home -> Tap: Super/Win | Hold: Screenshot"},
+            9: {"action": "mode_cycle", "desc": "+ -> Cycle Mode"},
+        },
+        "left_joycon": {
+            15: {"action": "key", "code": VK_SPACE, "desc": "ZL (Trigger) -> Next Slide (Space)"},
+            14: {"action": "key", "code": VK_BACK, "desc": "L (Bumper) -> Previous Slide (Backspace)"},
+            1: {"action": "key", "code": VK_SPACE, "desc": "Right (Face) -> Next Slide (Space)"},
+            2: {"action": "key", "code": VK_BACK, "desc": "Left (Face) -> Previous Slide (Backspace)"},
+            3: {"action": "key", "code": VK_F5, "desc": "Up (Face) -> Start Presentation (F5)"},
+            0: {"action": "key", "code": VK_B, "desc": "Down (Face) -> Black Screen (B)"},
+            10: {"action": "key", "code": VK_ESCAPE, "desc": "Stick Click -> Exit Slideshow (Esc)"},
+            13: {"action": "smart_home", "desc": "Capture -> Tap: Super/Win | Hold: Screenshot"},
+            8: {"action": "mode_cycle", "desc": "- -> Cycle Mode"},
+        },
+        "playstation": {
+            7: {"action": "key", "code": VK_SPACE, "desc": "R2 -> Next Slide (Space)"},
+            5: {"action": "key", "code": VK_B, "desc": "R1 -> Black Screen (B)"},
+            6: {"action": "key", "code": VK_BACK, "desc": "L2 -> Previous Slide (Backspace)"},
+            4: {"action": "key", "code": VK_F5, "desc": "L1 -> Start Presentation (F5)"},
+            2: {"action": "key", "code": VK_RETURN, "desc": "Circle (East) -> Next Slide / Confirm"},
+            1: {"action": "key", "code": VK_ESCAPE, "desc": "Cross (South) -> Exit Slideshow (Esc)"},
+            3: {"action": "key", "code": VK_F5, "desc": "Triangle (North) -> Start Presentation (F5)"},
+            0: {"action": "key", "code": VK_W, "desc": "Square (West) -> White Screen (W)"},
+            10: {"action": "key", "code": VK_ESCAPE, "desc": "L3 -> Exit Slideshow (Esc)"},
+            9: {"action": "mode_cycle", "desc": "Options -> Cycle Mode Forward"},
+            12: {"action": "smart_home", "desc": "PS Button -> Tap: Super/Win | Hold: Screenshot"},
+            13: {"action": "key", "code": VK_SPACE, "desc": "Trackpad Click -> Next Slide (Space)"},
+        },
+        "dual_joycon": {
+            7: {"action": "key", "code": VK_SPACE, "desc": "RT / ZR -> Next Slide (Space)"},
+            5: {"action": "key", "code": VK_B, "desc": "RB / R -> Black Screen (B)"},
+            6: {"action": "key", "code": VK_BACK, "desc": "LT / ZL -> Previous Slide (Backspace)"},
+            4: {"action": "key", "code": VK_F5, "desc": "LB / L -> Start Presentation (F5)"},
+            1: {"action": "key", "code": VK_RETURN, "desc": "B / East -> Next Slide / Confirm"},
+            0: {"action": "key", "code": VK_ESCAPE, "desc": "A / South -> Exit Slideshow (Esc)"},
+            3: {"action": "key", "code": VK_F5, "desc": "Y / North -> Start Presentation (F5)"},
+            2: {"action": "key", "code": VK_W, "desc": "X / West -> White Screen (W)"},
+            10: {"action": "key", "code": VK_ESCAPE, "desc": "L3 -> Exit Slideshow (Esc)"},
+            9: {"action": "mode_cycle", "desc": "Start / + -> Cycle Mode Forward"},
+            12: {"action": "smart_home", "desc": "Guide / Home -> Tap: Super/Win | Hold: Screenshot"},
+            13: {"action": "key", "code": VK_SNAPSHOT, "desc": "Capture / Share -> Instant Screenshot"},
+        },
+    },
+}
+
 DEFAULT_MAPPINGS = {
     "default": {
-        "name": "Standard Gamepad / Joy-Con (R)",
-        "left_click": 0,
-        "right_click": 1,
-        "middle_click": 2,
-        "trackpad_click": 13,
-        "cycle_mode": 9,
-        "cycle_mode_alt": 8,
-        "screenshot": 13,
-        "home": 12,
-        "media_play_pause": 0,
-        "media_vol_down": 1,
-        "media_vol_up": 2,
-        "media_next_track": 3,
-        "media_prev_track": 4,
-        "media_mute": 5,
-        "terminal_enter": 0,
-        "terminal_backspace": 1,
-        "terminal_tab": 2,
-        "terminal_esc": 3,
-        "slide_next": 0,
-        "slide_prev": 1,
-        "slide_f5": 2,
-        "slide_esc": 3
+        "name": "Standard Gamepad / Dual Joy-Con (Two-Handed)",
+        "rt": 7, "rb": 5, "lt": 6, "lb": 4,
+        "east": 1, "south": 0, "north": 3, "west": 2,
+        "l3": 10, "r3": 11, "start": 9, "select": 8, "home": 12, "capture": 13,
+        "left_click": 7, "right_click": 5, "middle_click": 6, "trackpad_click": 13,
+        "cycle_mode": 9, "cycle_mode_alt": 8, "screenshot": 13, "home_btn": 12,
+        "media_play_pause": 7, "media_vol_down": 1, "media_vol_up": 2,
+        "media_next_track": 3, "media_prev_track": 4, "media_mute": 6,
+        "terminal_enter": 1, "terminal_backspace": 0, "terminal_tab": 7, "terminal_esc": 6,
+        "slide_next": 7, "slide_prev": 6, "slide_f5": 4, "slide_esc": 0
+    },
+    "joycon_r": {
+        "name": "Nintendo Switch Joy-Con (R)",
+        "rt": 15, "rb": 14, "sl": 4, "sr": 5,
+        "east": 0, "north": 1, "south": 2, "west": 3,
+        "r3": 11, "home": 12, "start": 9,
+        "left_click": 15, "right_click": 14, "middle_click": 11,
+        "cycle_mode": 9, "screenshot": 12, "home_btn": 12,
+        "media_play_pause": 15, "media_mute": 14,
+        "terminal_enter": 15, "terminal_backspace": 14, "terminal_tab": 4, "terminal_esc": 5,
+        "slide_next": 15, "slide_prev": 14, "slide_f5": 1, "slide_esc": 11
     },
     "joycon_l": {
-        "name": "Nintendo Joy-Con (L)",
-        "left_click": 2,
-        "right_click": 1,
-        "middle_click": 0,
-        "trackpad_click": 13,
-        "cycle_mode": 8,
-        "cycle_mode_alt": 9,
-        "screenshot": 13,
-        "home": 12,
-        "media_play_pause": 2,
-        "media_vol_down": 1,
-        "media_vol_up": 3,
-        "media_next_track": 0,
-        "media_prev_track": 4,
-        "media_mute": 5,
-        "terminal_enter": 2,
-        "terminal_backspace": 1,
-        "terminal_tab": 0,
-        "terminal_esc": 3,
-        "slide_next": 1,
-        "slide_prev": 2,
-        "slide_f5": 3,
-        "slide_esc": 0
+        "name": "Nintendo Switch Joy-Con (L)",
+        "lt": 15, "lb": 14, "sl": 4, "sr": 5,
+        "south": 0, "east": 1, "west": 2, "north": 3,
+        "l3": 10, "capture": 13, "select": 8,
+        "left_click": 15, "right_click": 14, "middle_click": 10,
+        "cycle_mode": 8, "screenshot": 13, "home_btn": 13,
+        "media_play_pause": 15, "media_mute": 14,
+        "terminal_enter": 15, "terminal_backspace": 14, "terminal_tab": 4, "terminal_esc": 5,
+        "slide_next": 15, "slide_prev": 14, "slide_f5": 3, "slide_esc": 10
     },
     "playstation": {
         "name": "Sony PlayStation (DualSense / DualShock 4)",
-        "left_click": 0,           # Square / Cross
-        "right_click": 1,          # Circle / Cross
-        "middle_click": 2,         # Triangle
-        "trackpad_click": 13,      # DualSense physical mechanical trackpad click!
-        "cycle_mode": 9,           # Options
-        "cycle_mode_alt": 8,       # Share / Create
-        "screenshot": 8,           # Share / Create (Instant Screenshot)
-        "home": 12,                # PS Guide Button
-        "media_play_pause": 0,     # Primary action
-        "media_vol_down": 4,       # L1
-        "media_vol_up": 5,         # R1
-        "media_next_track": 1,     # Next Track
-        "media_prev_track": 2,     # Previous Track
-        "media_mute": 10,          # Mute (L3)
-        "terminal_enter": 0,       # Enter / Submit
-        "terminal_backspace": 1,   # Backspace
-        "terminal_tab": 4,         # L1 / Tab Auto-Complete
-        "terminal_esc": 8,         # Share / Escape
-        "slide_next": 0,
-        "slide_prev": 1,
-        "slide_f5": 2,
-        "slide_esc": 3
+        "west": 0, "south": 1, "east": 2, "north": 3,
+        "lb": 4, "rb": 5, "lt": 6, "rt": 7,
+        "select": 8, "start": 9, "l3": 10, "r3": 11, "home": 12, "capture": 13,
+        "left_click": 7, "right_click": 5, "middle_click": 6, "trackpad_click": 13,
+        "cycle_mode": 9, "cycle_mode_alt": 8, "screenshot": 8, "home_btn": 12,
+        "media_play_pause": 7, "media_vol_down": 4, "media_vol_up": 5,
+        "media_next_track": 1, "media_prev_track": 2, "media_mute": 6,
+        "terminal_enter": 2, "terminal_backspace": 1, "terminal_tab": 7, "terminal_esc": 6,
+        "slide_next": 7, "slide_prev": 6, "slide_f5": 4, "slide_esc": 1
     }
 }
+
 
 
 def get_config_dir() -> str:
@@ -408,7 +640,13 @@ class WindowsJoyConDriver:
         self.middle_pressed = False
 
         self.controller_name = "Unknown Controller"
+        self.device_profile = "dual_joycon"
+        self.custom_mapping: Optional[Dict[str, Any]] = None
         self.active_mapping = dict(DEFAULT_MAPPINGS["default"])
+        self.smart_press_timestamp: Optional[float] = None
+        self.smart_hold_triggered: bool = False
+        self.hold_threshold_sec: float = 0.38
+
         self.load_config(user_sens=sensitivity, user_deadzone=deadzone)
         self.rumble = WindowsRumbleManager(enabled=self.rumble_enabled, debug=self.debug)
 
@@ -436,7 +674,7 @@ class WindowsJoyConDriver:
             "youtube", "opera", "chrome", "firefox", "edge", "brave", "twitch", "netflix", "vlc", "spotify"
         ])
 
-    def send_key(self, vk_code):
+    def send_key(self, vk_code: int):
         if not IS_WINDOWS or not user32:
             return
         scan = user32.MapVirtualKeyW(vk_code, 0)
@@ -444,17 +682,17 @@ class WindowsJoyConDriver:
             VK_LWIN, VK_SNAPSHOT, VK_MEDIA_PLAY_PAUSE, VK_MEDIA_NEXT_TRACK,
             VK_MEDIA_PREV_TRACK, VK_VOLUME_UP, VK_VOLUME_DOWN, VK_VOLUME_MUTE,
             VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT, VK_RETURN, VK_SPACE,
-            VK_BROWSER_BACK, VK_BROWSER_FORWARD
+            VK_BROWSER_BACK, VK_BROWSER_FORWARD, VK_PRIOR, VK_NEXT
         }
         flags = KEYEVENTF_EXTENDEDKEY if vk_code in extended_keys else 0
         user32.keybd_event(vk_code, scan, flags, 0)
         time.sleep(0.015)
         user32.keybd_event(vk_code, scan, flags | KEYEVENTF_KEYUP, 0)
 
-    def send_combo(self, keys):
+    def send_combo(self, keys: List[int]):
         if not IS_WINDOWS or not user32:
             return
-        extended_keys = {VK_LWIN, VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT, VK_RETURN}
+        extended_keys = {VK_LWIN, VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT, VK_RETURN, VK_PRIOR, VK_NEXT, VK_SNAPSHOT}
         for k in keys:
             scan = user32.MapVirtualKeyW(k, 0)
             flags = KEYEVENTF_EXTENDEDKEY if k in extended_keys else 0
@@ -480,7 +718,7 @@ class WindowsJoyConDriver:
         elif button == "right" and not self.right_pressed:
             user32.mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
             self.right_pressed = True
-            print(f"\r  {BOLD}{BLUE}[Click]{RESET} RIGHT DOWN        ", end="", flush=True)
+            print(f"\r  {BOLD}{CYAN}[Click]{RESET} RIGHT DOWN        ", end="", flush=True)
         elif button == "middle" and not self.middle_pressed:
             user32.mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, 0)
             self.middle_pressed = True
@@ -518,12 +756,85 @@ class WindowsJoyConDriver:
             return "LEFT"
         return "CENTER"
 
+    def get_current_mode_map(self) -> Dict[int, Dict[str, Any]]:
+        curr_mode = self.modes[self.current_mode_index]
+        mode_dict = MODE_MAPS.get(curr_mode, {})
+        base_map = mode_dict.get(self.device_profile, mode_dict.get("dual_joycon", {}))
+        result = dict(base_map)
+        if self.custom_mapping:
+            if "cycle_mode" in self.custom_mapping:
+                result[self.custom_mapping["cycle_mode"]] = {"action": "mode_cycle", "desc": "Custom -> Cycle Mode"}
+            if "screenshot" in self.custom_mapping:
+                result[self.custom_mapping["screenshot"]] = {"action": "key", "code": VK_SNAPSHOT, "desc": "Custom -> Screenshot"}
+            if "home" in self.custom_mapping:
+                result[self.custom_mapping["home"]] = {"action": "smart_home", "desc": "Custom -> Smart Home"}
+            if curr_mode == "DESKTOP MOUSE":
+                if "left_click" in self.custom_mapping:
+                    result[self.custom_mapping["left_click"]] = {"action": "mouse_btn", "code": "left", "desc": "Custom -> Left Click"}
+                if "right_click" in self.custom_mapping:
+                    result[self.custom_mapping["right_click"]] = {"action": "mouse_btn", "code": "right", "desc": "Custom -> Right Click"}
+                if "middle_click" in self.custom_mapping:
+                    result[self.custom_mapping["middle_click"]] = {"action": "mouse_btn", "code": "middle", "desc": "Custom -> Middle Click"}
+            elif curr_mode == "UNIVERSAL MEDIA REMOTE":
+                if "media_play_pause" in self.custom_mapping:
+                    result[self.custom_mapping["media_play_pause"]] = {"action": "media_play_pause", "desc": "Custom -> Play / Pause"}
+                if "media_mute" in self.custom_mapping:
+                    result[self.custom_mapping["media_mute"]] = {"action": "key", "code": VK_VOLUME_MUTE, "desc": "Custom -> Mute Audio"}
+                if "media_vol_up" in self.custom_mapping:
+                    result[self.custom_mapping["media_vol_up"]] = {"action": "key", "code": VK_VOLUME_UP, "desc": "Custom -> Volume Up"}
+                if "media_vol_down" in self.custom_mapping:
+                    result[self.custom_mapping["media_vol_down"]] = {"action": "key", "code": VK_VOLUME_DOWN, "desc": "Custom -> Volume Down"}
+        return result
+
+    def print_mode_cheatsheet(self):
+        curr_mode = self.modes[self.current_mode_index]
+        print("\n" + "=" * 76)
+        print(f"  {BOLD}{PURPLE}🎮 ACTIVE MODE [{self.current_mode_index + 1}/{len(self.modes)}]: {GREEN}[{curr_mode}]{RESET}")
+        print(f"  {CYAN}Device Profile:{RESET} {BOLD}{self.device_profile.upper()}{RESET} ({self.controller_name})")
+        print("-" * 76)
+        print("Controls Cheatsheet:")
+        button_map = self.get_current_mode_map()
+        seen = set()
+        for act in sorted(button_map.values(), key=lambda x: str(x.get("desc", ""))):
+            desc = act.get("desc", "")
+            if desc and desc not in seen:
+                seen.add(desc)
+                print(f"  * {desc}")
+        if curr_mode == "DESKTOP MOUSE":
+            print("  * D-Pad Up/Down -> Page Scroll Up / Down")
+            print("  * D-Pad Left/Right -> Browser History Back / Forward")
+            print("  * Left Stick -> Precision Pointer Cursor (x^1.6 curve)")
+        elif curr_mode == "UNIVERSAL MEDIA REMOTE":
+            print("  * D-Pad Up/Down -> Volume Up / Down")
+            print("  * D-Pad Left/Right -> Prev Track / Next Track")
+            print("  * Left Stick Left/Right -> Scrub Forward (+5s) / Rewind (-5s)")
+            print("  * Left Stick Up/Down -> Volume Up / Down")
+        elif curr_mode == "INTERACTIVE TERMINAL":
+            print("  * D-Pad Up/Down -> History Up / Down")
+            print("  * D-Pad Left/Right -> Move Cursor Left / Right")
+            print("  * Left Stick Up/Down -> Scroll Terminal History")
+        elif curr_mode == "PRESENTATION CLICKER":
+            print("  * D-Pad Up/Down -> First Slide (PageUp) / Last Slide (PageDown)")
+            print("  * D-Pad Left/Right -> Previous Slide / Next Slide")
+        print("-" * 76)
+        print("Tip: Press Start / Plus or Minus to cycle mode (with tactile haptic click).")
+        print("Tip: Tap Home/Capture for Start Menu | Hold >= 0.4s for Screenshot.")
+        print("=" * 76 + "\n")
+
     def cycle_mode(self):
+        if self.left_pressed:
+            self.mouse_up("left")
+        if self.right_pressed:
+            self.mouse_up("right")
+        if self.middle_pressed:
+            self.mouse_up("middle")
         self.current_mode_index = (self.current_mode_index + 1) % len(self.modes)
         mode = self.modes[self.current_mode_index]
         print(f"\n{BOLD}{PURPLE}🔄 Switched Mode:{RESET} {BOLD}{GREEN}[{mode}]{RESET}")
         if self.rumble:
             self.rumble.mode_switch()
+        self.print_mode_cheatsheet()
+
 
     def get_controller_name(self, dev_id: int) -> str:
         if not IS_WINDOWS or not winmm:
@@ -635,39 +946,46 @@ class WindowsJoyConDriver:
         self.controller_name = self.get_controller_name(dev_id)
         all_profiles = load_all_mappings()
 
+        norm_name = self.controller_name.lower()
+        if "joy-con (l)" in norm_name or "left joy-con" in norm_name:
+            self.device_profile = "left_joycon"
+            self.active_mapping = dict(DEFAULT_MAPPINGS["joycon_l"])
+            print(f"  {BOLD}{GREEN}✓ Matched built-in profile:{RESET} Nintendo Joy-Con (L)")
+        elif "joy-con (r)" in norm_name or "right joy-con" in norm_name:
+            self.device_profile = "right_joycon"
+            self.active_mapping = dict(DEFAULT_MAPPINGS["joycon_r"])
+            print(f"  {BOLD}{GREEN}✓ Matched built-in profile:{RESET} Nintendo Switch Joy-Con (R)")
+        elif any(ps in norm_name for ps in ["dualsense", "dualshock", "playstation", "wireless controller"]):
+            self.device_profile = "playstation"
+            self.active_mapping = dict(DEFAULT_MAPPINGS["playstation"])
+            print(f"  {BOLD}{GREEN}✓ Matched built-in profile:{RESET} Sony PlayStation (DualSense / DualShock 4)")
+        else:
+            self.device_profile = "dual_joycon"
+            self.active_mapping = dict(DEFAULT_MAPPINGS["default"])
+            print(f"  {BOLD}{GREEN}✓ Matched built-in profile:{RESET} Standard Gamepad / Dual Joy-Con")
+
         if self.force_map:
             self.active_mapping = self.run_mapping_wizard(dev_id, self.controller_name)
+            self.custom_mapping = self.active_mapping
             return
 
         # Check if saved profile exists
         if self.controller_name in all_profiles:
             self.active_mapping = all_profiles[self.controller_name]
+            self.custom_mapping = self.active_mapping
             print(f"  {BOLD}{GREEN}✓ Loaded saved button mapping for:{RESET} '{self.controller_name}'")
             return
 
-        # Check partial name matches (e.g. Joy-Con L vs R, PlayStation)
-        norm_name = self.controller_name.lower()
-        if "joy-con (l)" in norm_name or "left joy-con" in norm_name:
-            self.active_mapping = dict(DEFAULT_MAPPINGS["joycon_l"])
-            print(f"  {BOLD}{GREEN}✓ Matched built-in profile:{RESET} Nintendo Joy-Con (L)")
-            return
-        elif any(ps in norm_name for ps in ["dualsense", "dualshock", "playstation", "wireless controller"]):
-            self.active_mapping = dict(DEFAULT_MAPPINGS["playstation"])
-            print(f"  {BOLD}{GREEN}✓ Matched built-in profile:{RESET} Sony PlayStation (DualSense / DualShock 4)")
-            return
-        elif "joy-con" in norm_name or "gamepad" in norm_name or "controller" in norm_name:
-            self.active_mapping = dict(DEFAULT_MAPPINGS["default"])
-            print(f"  {BOLD}{GREEN}✓ Matched built-in profile:{RESET} Standard Gamepad / Joy-Con (R)")
-            return
-
         # Unrecognized / new controller -> Guided wizard
-        print(f"  {YELLOW}ℹ️  New or unrecognized controller detected: '{self.controller_name}'{RESET}")
-        print(f"  {DIM}Setting up custom button configuration...{RESET}")
-        try:
-            self.active_mapping = self.run_mapping_wizard(dev_id, self.controller_name)
-        except KeyboardInterrupt:
-            print(f"\n{YELLOW}Wizard cancelled. Using standard defaults.{RESET}")
-            self.active_mapping = dict(DEFAULT_MAPPINGS["default"])
+        if not any(k in norm_name for k in ["joy-con", "gamepad", "controller", "dualsense", "dualshock", "playstation", "wireless"]):
+            print(f"  {YELLOW}ℹ️  New or unrecognized controller detected: '{self.controller_name}'{RESET}")
+            print(f"  {DIM}Setting up custom button configuration...{RESET}")
+            try:
+                self.active_mapping = self.run_mapping_wizard(dev_id, self.controller_name)
+                self.custom_mapping = self.active_mapping
+            except KeyboardInterrupt:
+                print(f"\n{YELLOW}Wizard cancelled. Using standard defaults.{RESET}")
+                self.active_mapping = dict(DEFAULT_MAPPINGS["default"])
 
     def run(self):
         print(f"\n================================================================================")
@@ -704,35 +1022,11 @@ class WindowsJoyConDriver:
             self.rumble.connect()
             print(f"  {BOLD}{PURPLE}📳 [Haptics]{RESET} Controller vibration active\n")
 
+        self.print_mode_cheatsheet()
+
         info = JOYINFOEX()
         info.dwSize = ctypes.sizeof(JOYINFOEX)
         info.dwFlags = JOY_RETURNALL
-
-        btn_left = self.active_mapping.get("left_click", 0)
-        btn_right = self.active_mapping.get("right_click", 1)
-        btn_middle = self.active_mapping.get("middle_click", 2)
-        btn_pad_click = self.active_mapping.get("trackpad_click", 13)
-        btn_cycle = self.active_mapping.get("cycle_mode", 9)
-        btn_cycle_alt = self.active_mapping.get("cycle_mode_alt", 8)
-        btn_screenshot = self.active_mapping.get("screenshot", 13)
-        btn_home = self.active_mapping.get("home", 12)
-
-        btn_m_play = self.active_mapping.get("media_play_pause", 0)
-        btn_m_voldn = self.active_mapping.get("media_vol_down", 1)
-        btn_m_volup = self.active_mapping.get("media_vol_up", 2)
-        btn_m_next = self.active_mapping.get("media_next_track", 3)
-        btn_m_prev = self.active_mapping.get("media_prev_track", 4)
-        btn_m_mute = self.active_mapping.get("media_mute", 5)
-
-        btn_t_enter = self.active_mapping.get("terminal_enter", 0)
-        btn_t_back = self.active_mapping.get("terminal_backspace", 1)
-        btn_t_tab = self.active_mapping.get("terminal_tab", 4)
-        btn_t_esc = self.active_mapping.get("terminal_esc", 8)
-
-        btn_s_next = self.active_mapping.get("slide_next", 0)
-        btn_s_prev = self.active_mapping.get("slide_prev", 1)
-        btn_s_f5 = self.active_mapping.get("slide_f5", 2)
-        btn_s_esc = self.active_mapping.get("slide_esc", 3)
 
         try:
             while True:
@@ -748,6 +1042,8 @@ class WindowsJoyConDriver:
                     dev_id = self.find_connected_controller()
                     if dev_id is not None and self.rumble:
                         self.rumble.connect()
+                        self.setup_mapping_profile(dev_id)
+                        self.print_mode_cheatsheet()
                     continue
 
                 # Normalize stick axes: 0..65535, center = 32768
@@ -757,6 +1053,8 @@ class WindowsJoyConDriver:
                 # Check button state changes
                 buttons = info.dwButtons
                 pressed = buttons & ~self.last_buttons
+                released = self.last_buttons & ~buttons
+                now = time.time()
 
                 if self.debug and pressed:
                     print(f"  [DEBUG] Buttons: 0x{buttons:04X} Pressed: 0x{pressed:04X} POV: {info.dwPOV}")
@@ -765,33 +1063,189 @@ class WindowsJoyConDriver:
                 pov = info.dwPOV
                 pov_dir = self.get_pov_direction(pov)
                 pov_changed = (pov_dir != self.last_pov_direction)
-                now = time.time()
 
-                # Mode cycling button
-                if (pressed & (1 << btn_cycle)) or (pressed & (1 << btn_cycle_alt)):
+                curr_mode = self.modes[self.current_mode_index]
+                active_map = self.get_current_mode_map()
+
+                # --- 1. Mouse Button Continuous Down/Up Handling ---
+                if curr_mode == "DESKTOP MOUSE":
+                    left_bits = [b for b, act in active_map.items() if act.get("action") == "mouse_btn" and act.get("code") == "left"]
+                    right_bits = [b for b, act in active_map.items() if act.get("action") == "mouse_btn" and act.get("code") == "right"]
+                    middle_bits = [b for b, act in active_map.items() if act.get("action") == "mouse_btn" and act.get("code") == "middle"]
+
+                    # Also check Xbox trigger axis (LT / RT on dwZpos)
+                    rt_axis_down = (self.device_profile == "dual_joycon" and hasattr(info, "dwZpos") and 0 < info.dwZpos < 16384)
+                    lt_axis_down = (self.device_profile == "dual_joycon" and hasattr(info, "dwZpos") and info.dwZpos > 49152)
+
+                    is_left_down = any(bool(buttons & (1 << b)) for b in left_bits) or rt_axis_down
+                    is_right_down = any(bool(buttons & (1 << b)) for b in right_bits)
+                    is_middle_down = any(bool(buttons & (1 << b)) for b in middle_bits) or lt_axis_down
+
+                    if is_left_down:
+                        self.mouse_down("left")
+                    else:
+                        self.mouse_up("left")
+
+                    if is_right_down:
+                        self.mouse_down("right")
+                    else:
+                        self.mouse_up("right")
+
+                    if is_middle_down:
+                        self.mouse_down("middle")
+                    else:
+                        self.mouse_up("middle")
+                else:
                     if self.left_pressed:
                         self.mouse_up("left")
                     if self.right_pressed:
                         self.mouse_up("right")
                     if self.middle_pressed:
                         self.mouse_up("middle")
-                    self.cycle_mode()
 
-                # Dedicated Screenshot Button (when not conflicting with pad click)
-                if (pressed & (1 << btn_screenshot)) and btn_screenshot != btn_pad_click:
-                    self.send_key(VK_SNAPSHOT)
-                    print(f"\n  {BOLD}{CYAN}📸 [Screenshot]{RESET} Instant PrintScreen triggered")
-                    if self.rumble:
-                        self.rumble.screenshot()
+                # --- 2. Button Pressed Action Dispatch ---
+                for bit in range(32):
+                    if pressed & (1 << bit):
+                        act = active_map.get(bit)
+                        if not act:
+                            continue
+                        action_type = act.get("action")
+                        desc = act.get("desc", "Action")
 
-                # Dedicated Home / Guide Button
-                if pressed & (1 << btn_home):
-                    self.send_key(VK_LWIN)
+                        if action_type == "mouse_btn":
+                            # Continuous state handled above
+                            continue
 
-                curr_mode = self.modes[self.current_mode_index]
+                        elif action_type == "mode_cycle":
+                            self.cycle_mode()
 
+                        elif action_type == "smart_home":
+                            self.smart_press_timestamp = now
+                            self.smart_hold_triggered = False
+
+                        elif action_type == "media_play_pause":
+                            fg_app = get_foreground_window_title() or "System Default"
+                            if self.is_browser_or_media_window():
+                                self.send_key(VK_SPACE)
+                                print(f"\n  {BOLD}{GREEN}▶/⏸ [Media]{RESET} Spacebar (Play/Pause) -> {fg_app}")
+                            else:
+                                self.send_key(VK_MEDIA_PLAY_PAUSE)
+                                print(f"\n  {BOLD}{GREEN}▶/⏸ [Media]{RESET} Play/Pause -> {fg_app}")
+                            if self.rumble:
+                                self.rumble.tick()
+
+                        elif action_type == "key":
+                            vk = act.get("code")
+                            self.send_key(vk)
+                            print(f"\n  {BOLD}{CYAN}[Action]{RESET} {desc}")
+                            if vk == VK_SNAPSHOT:
+                                if self.rumble:
+                                    self.rumble.screenshot()
+                            elif self.rumble:
+                                self.rumble.tick()
+
+                        elif action_type == "combo":
+                            keys = act.get("keys", [])
+                            self.send_combo(keys)
+                            print(f"\n  {BOLD}{CYAN}[Action]{RESET} {desc}")
+                            if VK_C in keys and VK_CONTROL in keys:
+                                if self.rumble:
+                                    self.rumble.pulse(duration_ms=60, strong=0x7000, weak=0x7000)
+                            elif self.rumble:
+                                self.rumble.tick()
+
+                        elif action_type == "scroll":
+                            param = act.get("param", 1)
+                            self.mouse_wheel(param)
+
+                # --- 3. Smart Home Release & Hold Check ---
+                for bit in range(32):
+                    if released & (1 << bit):
+                        act = active_map.get(bit)
+                        if act and act.get("action") == "smart_home":
+                            if self.smart_press_timestamp is not None and not self.smart_hold_triggered:
+                                self.send_key(VK_LWIN)
+                                print(f"\n  {BOLD}{CYAN}🏠 [Smart Button]{RESET} Tapped -> Super (Windows Key)")
+                            self.smart_press_timestamp = None
+                            self.smart_hold_triggered = False
+
+                if self.smart_press_timestamp is not None and not self.smart_hold_triggered:
+                    if (now - self.smart_press_timestamp) >= self.hold_threshold_sec:
+                        self.send_key(VK_SNAPSHOT)
+                        self.smart_hold_triggered = True
+                        if self.rumble:
+                            self.rumble.screenshot()
+                        print(f"\n  {BOLD}{CYAN}📸 [Smart Button]{RESET} Held -> Instant Screenshot (PrintScreen)")
+
+                # --- 4. D-Pad / POV Hat Actions ---
                 if curr_mode == "DESKTOP MOUSE":
-                    # Analog Stick -> Mouse Cursor Movement
+                    if pov_dir == "UP":
+                        if now - self.last_scroll_time >= 0.07:
+                            self.mouse_wheel(1)
+                            self.last_scroll_time = now
+                    elif pov_dir == "DOWN":
+                        if now - self.last_scroll_time >= 0.07:
+                            self.mouse_wheel(-1)
+                            self.last_scroll_time = now
+                    elif pov_dir == "LEFT" and pov_changed:
+                        self.send_key(VK_BROWSER_BACK)
+                        print(f"\n  {BOLD}{CYAN}⬅️  [Nav]{RESET} Browser Back")
+                    elif pov_dir == "RIGHT" and pov_changed:
+                        self.send_key(VK_BROWSER_FORWARD)
+                        print(f"\n  {BOLD}{CYAN}➡️  [Nav]{RESET} Browser Forward")
+
+                elif curr_mode == "UNIVERSAL MEDIA REMOTE":
+                    if pov_dir == "UP":
+                        if now - self.last_vol_time >= 0.12:
+                            self.send_key(VK_VOLUME_UP)
+                            self.last_vol_time = now
+                            if self.rumble:
+                                self.rumble.tick()
+                    elif pov_dir == "DOWN":
+                        if now - self.last_vol_time >= 0.12:
+                            self.send_key(VK_VOLUME_DOWN)
+                            self.last_vol_time = now
+                            if self.rumble:
+                                self.rumble.tick()
+                    elif pov_dir == "LEFT" and pov_changed:
+                        self.send_key(VK_MEDIA_PREV_TRACK)
+                        print(f"\n  {BOLD}{CYAN}⏮ [Media]{RESET} Previous Track")
+                        if self.rumble:
+                            self.rumble.tick()
+                    elif pov_dir == "RIGHT" and pov_changed:
+                        self.send_key(VK_MEDIA_NEXT_TRACK)
+                        print(f"\n  {BOLD}{CYAN}⏭ [Media]{RESET} Next Track")
+                        if self.rumble:
+                            self.rumble.tick()
+
+                elif curr_mode == "INTERACTIVE TERMINAL":
+                    if pov_dir == "UP" and pov_changed:
+                        self.send_key(VK_UP)
+                        print(f"\n  {BOLD}{CYAN}⬆️  [Terminal]{RESET} History Up")
+                    elif pov_dir == "DOWN" and pov_changed:
+                        self.send_key(VK_DOWN)
+                        print(f"\n  {BOLD}{CYAN}⬇️  [Terminal]{RESET} History Down")
+                    elif pov_dir == "LEFT" and pov_changed:
+                        self.send_key(VK_LEFT)
+                    elif pov_dir == "RIGHT" and pov_changed:
+                        self.send_key(VK_RIGHT)
+
+                elif curr_mode == "PRESENTATION CLICKER":
+                    if pov_dir == "UP" and pov_changed:
+                        self.send_key(VK_PRIOR)
+                        print(f"\n  {BOLD}{CYAN}⏮ [Slides]{RESET} First Slide / Page Up")
+                    elif pov_dir == "DOWN" and pov_changed:
+                        self.send_key(VK_NEXT)
+                        print(f"\n  {BOLD}{CYAN}⏭ [Slides]{RESET} Last Slide / Page Down")
+                    elif pov_dir == "LEFT" and pov_changed:
+                        self.send_key(VK_LEFT)
+                        print(f"\n  {BOLD}{CYAN}◀️  [Slides]{RESET} Previous Slide")
+                    elif pov_dir == "RIGHT" and pov_changed:
+                        self.send_key(VK_RIGHT)
+                        print(f"\n  {BOLD}{CYAN}▶️  [Slides]{RESET} Next Slide")
+
+                # --- 5. Analog Stick Actions ---
+                if curr_mode == "DESKTOP MOUSE":
                     mag = math.hypot(norm_x, norm_y)
                     if mag > self.deadzone:
                         eff_mag = min(1.0, (mag - self.deadzone) / (1.0 - self.deadzone))
@@ -811,7 +1265,7 @@ class WindowsJoyConDriver:
                         self.acc_x = 0.0
                         self.acc_y = 0.0
 
-                    # Right Stick continuous vertical scroll wheel (when dual Joy-Cons or gamepad connected)
+                    # Right Stick continuous vertical scroll wheel
                     if hasattr(info, "dwRpos") and info.dwRpos > 0:
                         norm_r = (info.dwRpos - 32768) / 32768.0
                         if abs(norm_r) > self.deadzone:
@@ -825,56 +1279,12 @@ class WindowsJoyConDriver:
                         else:
                             self.acc_scroll = 0.0
 
-                    # Left Click (Standard Left Click or Trackpad Physical Click)
-                    is_left_down = bool((buttons & (1 << btn_left)) or (btn_pad_click is not None and (buttons & (1 << btn_pad_click))))
-                    if is_left_down:
-                        self.mouse_down("left")
-                    else:
-                        self.mouse_up("left")
-
-                    # Right Click
-                    if buttons & (1 << btn_right):
-                        self.mouse_down("right")
-                    else:
-                        self.mouse_up("right")
-
-                    # Middle Click
-                    if buttons & (1 << btn_middle):
-                        self.mouse_down("middle")
-                    else:
-                        self.mouse_up("middle")
-
-                    # D-Pad POV Navigation:
-                    # UP / DOWN: Smooth Scroll Wheel
-                    if pov_dir == "UP":
-                        if now - self.last_scroll_time >= 0.07:
-                            self.mouse_wheel(1)
-                            self.last_scroll_time = now
-                    elif pov_dir == "DOWN":
-                        if now - self.last_scroll_time >= 0.07:
-                            self.mouse_wheel(-1)
-                            self.last_scroll_time = now
-                    # LEFT / RIGHT: Browser Back / Forward
-                    elif pov_dir == "LEFT" and pov_changed:
-                        self.send_key(VK_BROWSER_BACK)
-                    elif pov_dir == "RIGHT" and pov_changed:
-                        self.send_key(VK_BROWSER_FORWARD)
-
-                elif curr_mode == "MEDIA REMOTE":
-                    # Release mouse buttons if lingering from mode transition
-                    if self.left_pressed:
-                        self.mouse_up("left")
-                    if self.right_pressed:
-                        self.mouse_up("right")
-                    if self.middle_pressed:
-                        self.mouse_up("middle")
+                elif curr_mode == "UNIVERSAL MEDIA REMOTE":
                     self.acc_x = 0.0
                     self.acc_y = 0.0
-
                     fg_app = get_foreground_window_title() or "System Default"
 
                     # Analog Stick Media Seek (Parity with Linux enable_media_seek)
-                    # Horizontal deflection scrubs video / seeks audio (+5s / -5s)
                     if norm_x > 0.55:
                         if now - self.last_seek_time >= 0.25:
                             self.send_key(VK_RIGHT)
@@ -890,7 +1300,7 @@ class WindowsJoyConDriver:
                             if self.rumble:
                                 self.rumble.tick()
 
-                    # Vertical deflection adjusts volume up/down
+                    # Vertical stick adjusts volume up/down
                     if norm_y < -0.65:
                         if now - self.last_vol_time >= 0.15:
                             self.send_key(VK_VOLUME_UP)
@@ -904,136 +1314,18 @@ class WindowsJoyConDriver:
                             if self.rumble:
                                 self.rumble.tick()
 
-                    # Button Controls: Play/Pause, Volume, Next/Prev Track, Mute
-                    if pressed & (1 << btn_m_play):
-                        if self.is_browser_or_media_window():
-                            self.send_key(VK_SPACE)
-                            print(f"\n  {BOLD}{GREEN}▶/⏸ [Media]{RESET} Spacebar (Play/Pause) -> {fg_app}")
-                        else:
-                            self.send_key(VK_MEDIA_PLAY_PAUSE)
-                            print(f"\n  {BOLD}{GREEN}▶/⏸ [Media]{RESET} Play/Pause -> {fg_app}")
-                        if self.rumble:
-                            self.rumble.tick()
-                    if pressed & (1 << btn_m_voldn):
-                        self.send_key(VK_VOLUME_DOWN)
-                        if self.rumble:
-                            self.rumble.tick()
-                    if pressed & (1 << btn_m_volup):
-                        self.send_key(VK_VOLUME_UP)
-                        if self.rumble:
-                            self.rumble.tick()
-                    if pressed & (1 << btn_m_next):
-                        self.send_key(VK_MEDIA_NEXT_TRACK)
-                        print(f"\n  {BOLD}{CYAN}⏭ [Media]{RESET} Next Track -> {fg_app}")
-                        if self.rumble:
-                            self.rumble.tick()
-                    if btn_m_prev is not None and (pressed & (1 << btn_m_prev)):
-                        self.send_key(VK_MEDIA_PREV_TRACK)
-                        print(f"\n  {BOLD}{CYAN}⏮ [Media]{RESET} Previous Track -> {fg_app}")
-                        if self.rumble:
-                            self.rumble.tick()
-                    if btn_m_mute is not None and (pressed & (1 << btn_m_mute)):
-                        self.send_key(VK_VOLUME_MUTE)
-                        print(f"\n  {BOLD}{YELLOW}🔇 [Media]{RESET} Toggle Mute Audio")
-                        if self.rumble:
-                            self.rumble.tick()
-
-                    # D-Pad POV in Media Remote:
-                    if pov_dir == "UP":
-                        if now - self.last_vol_time >= 0.12:
-                            self.send_key(VK_VOLUME_UP)
-                            self.last_vol_time = now
-                            if self.rumble:
-                                self.rumble.tick()
-                    elif pov_dir == "DOWN":
-                        if now - self.last_vol_time >= 0.12:
-                            self.send_key(VK_VOLUME_DOWN)
-                            self.last_vol_time = now
-                            if self.rumble:
-                                self.rumble.tick()
-                    elif pov_dir == "LEFT" and pov_changed:
-                        self.send_key(VK_MEDIA_PREV_TRACK)
-                        if self.rumble:
-                            self.rumble.tick()
-                    elif pov_dir == "RIGHT" and pov_changed:
-                        self.send_key(VK_MEDIA_NEXT_TRACK)
-                        if self.rumble:
-                            self.rumble.tick()
-
                 elif curr_mode == "INTERACTIVE TERMINAL":
-                    if self.left_pressed:
-                        self.mouse_up("left")
-                    if self.right_pressed:
-                        self.mouse_up("right")
-                    if self.middle_pressed:
-                        self.mouse_up("middle")
                     self.acc_x = 0.0
                     self.acc_y = 0.0
-
-                    # Vertical stick scrolls terminal history
+                    # Vertical stick scrolls terminal history buffer
                     if abs(norm_y) > 0.40 and (now - self.last_scroll_time >= 0.08):
                         step = 1 if norm_y < 0 else -1
                         self.mouse_wheel(step)
                         self.last_scroll_time = now
 
-                    if pressed & (1 << btn_t_enter):
-                        self.send_key(VK_RETURN)
-                        if self.rumble:
-                            self.rumble.tick()
-                    if pressed & (1 << btn_t_back):
-                        self.send_key(VK_BACK)
-                        if self.rumble:
-                            self.rumble.tick()
-                    if pressed & (1 << btn_t_tab):
-                        self.send_key(VK_TAB)
-                        if self.rumble:
-                            self.rumble.tick()
-                    if pressed & (1 << btn_t_esc):
-                        self.send_key(VK_ESCAPE)
-                        if self.rumble:
-                            self.rumble.tick()
-                    # Middle click sends Ctrl+C Interrupt in Terminal mode
-                    if pressed & (1 << btn_middle):
-                        self.send_combo([VK_CONTROL, VK_C])
-                        print(f"\n  {BOLD}{YELLOW}🛑 [Terminal]{RESET} Ctrl+C Interrupt sent")
-                        if self.rumble:
-                            self.rumble.pulse(duration_ms=60, strong=0x7000, weak=0x7000)
-
-                    # D-Pad POV in Terminal:
-                    if pov_dir == "UP" and pov_changed:
-                        self.send_key(VK_UP)      # History Up
-                    elif pov_dir == "DOWN" and pov_changed:
-                        self.send_key(VK_DOWN)    # History Down
-                    elif pov_dir == "LEFT" and pov_changed:
-                        self.send_key(VK_LEFT)    # Cursor Left
-                    elif pov_dir == "RIGHT" and pov_changed:
-                        self.send_key(VK_RIGHT)   # Cursor Right
-
                 elif curr_mode == "PRESENTATION CLICKER":
-                    if self.left_pressed:
-                        self.mouse_up("left")
-                    if self.right_pressed:
-                        self.mouse_up("right")
-                    if self.middle_pressed:
-                        self.mouse_up("middle")
                     self.acc_x = 0.0
                     self.acc_y = 0.0
-                    if pressed & (1 << btn_s_next):
-                        self.send_key(VK_RIGHT)
-                        if self.rumble:
-                            self.rumble.tick()
-                    if pressed & (1 << btn_s_prev):
-                        self.send_key(VK_LEFT)
-                        if self.rumble:
-                            self.rumble.tick()
-                    if pressed & (1 << btn_s_f5):
-                        self.send_key(VK_F5)
-                        if self.rumble:
-                            self.rumble.tick()
-                    if pressed & (1 << btn_s_esc):
-                        self.send_key(VK_ESCAPE)
-                        if self.rumble:
-                            self.rumble.tick()
 
                 self.last_buttons = buttons
                 self.last_pov = pov
