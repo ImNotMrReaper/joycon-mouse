@@ -51,12 +51,13 @@ joycon-mouse/ (windows branch)
 ├── install.ps1                # 1-Click Remote PowerShell installer (irm ... | iex)
 ├── install.bat                # 1-Click local Windows installer (creates shortcuts)
 ├── run_windows.bat            # Double-clickable Windows driver launcher
+├── joycon-mouse.cmd           # Terminal CLI shim for 'joycon-mouse'
 ├── build_exe.bat              # Standalone JoyConMouse.exe 1-click packager
 ├── uninstall.bat              # Clean uninstaller (removes shortcuts)
 ├── joycon-mouse-windows.py    # Native Windows driver (WinMM + User32 via ctypes)
 ├── joycon-mouse.py            # Windows entry point
-├── modes/                     # Built-in controller modes (Air Mouse, Media, Terminal)
-├── custom_modes/              # Shared community modes (Gaming Hotkeys, Presentation)
+├── test_buttons.py            # Real-time interactive button/axis diagnostic tool
+├── CONTRIBUTORS.md            # Team & contributor acknowledgments
 ├── TESTING_GUIDE.md           # Tester & collaborator guide
 ├── AGENTS.md                  # Universal AI assistant guardrails
 └── README.md                  # Windows documentation
