@@ -100,6 +100,18 @@ if IS_WINDOWS:
     VK_F5 = 0x74
     VK_SNAPSHOT = 0x2C         # PrintScreen / Instant Screenshot
     VK_LWIN = 0x5B             # Left Windows / Start / Overview Key
+    VK_RETURN = 0x0D           # Enter / Submit
+    VK_BACK = 0x08             # Backspace
+    VK_TAB = 0x09              # Tab Auto-Complete
+    VK_UP = 0x26               # Arrow Up (History Up)
+    VK_DOWN = 0x28             # Arrow Down (History Down)
+    VK_CONTROL = 0x11          # Left Ctrl
+    VK_C = 0x43                # C key
+    VK_T = 0x54                # T key
+    VK_W = 0x57                # W key
+    VK_R = 0x52                # R key
+    VK_BROWSER_BACK = 0xA6     # Browser Back
+    VK_BROWSER_FORWARD = 0xA7  # Browser Forward
 else:
     class JOYINFOEX:
         pass
@@ -126,6 +138,7 @@ DEFAULT_MAPPINGS = {
         "left_click": 0,
         "right_click": 1,
         "middle_click": 2,
+        "trackpad_click": 13,
         "cycle_mode": 9,
         "cycle_mode_alt": 8,
         "screenshot": 13,
@@ -134,6 +147,10 @@ DEFAULT_MAPPINGS = {
         "media_vol_down": 1,
         "media_vol_up": 2,
         "media_next_track": 3,
+        "terminal_enter": 0,
+        "terminal_backspace": 1,
+        "terminal_tab": 2,
+        "terminal_esc": 3,
         "slide_next": 0,
         "slide_prev": 1,
         "slide_f5": 2,
@@ -144,6 +161,7 @@ DEFAULT_MAPPINGS = {
         "left_click": 2,
         "right_click": 1,
         "middle_click": 0,
+        "trackpad_click": 13,
         "cycle_mode": 8,
         "cycle_mode_alt": 9,
         "screenshot": 13,
@@ -152,10 +170,37 @@ DEFAULT_MAPPINGS = {
         "media_vol_down": 1,
         "media_vol_up": 3,
         "media_next_track": 0,
+        "terminal_enter": 2,
+        "terminal_backspace": 1,
+        "terminal_tab": 0,
+        "terminal_esc": 3,
         "slide_next": 1,
         "slide_prev": 2,
         "slide_f5": 3,
         "slide_esc": 0
+    },
+    "playstation": {
+        "name": "Sony PlayStation (DualSense / DualShock 4)",
+        "left_click": 0,           # Square / Cross
+        "right_click": 1,          # Circle / Cross
+        "middle_click": 2,         # Triangle
+        "trackpad_click": 13,      # DualSense physical mechanical trackpad click!
+        "cycle_mode": 9,           # Options
+        "cycle_mode_alt": 8,       # Share / Create
+        "screenshot": 8,           # Share / Create (Instant Screenshot)
+        "home": 12,                # PS Guide Button
+        "media_play_pause": 0,     # Primary action
+        "media_vol_down": 4,       # L1
+        "media_vol_up": 5,         # R1
+        "media_next_track": 1,     # Next Track
+        "terminal_enter": 0,       # Enter / Submit
+        "terminal_backspace": 1,   # Backspace
+        "terminal_tab": 4,         # L1 / Tab Auto-Complete
+        "terminal_esc": 8,         # Share / Escape
+        "slide_next": 0,
+        "slide_prev": 1,
+        "slide_f5": 2,
+        "slide_esc": 3
     }
 }
 
@@ -222,11 +267,14 @@ class WindowsJoyConDriver:
         self.sensitivity = 1.0
         self.deadzone = 0.10
         self.current_mode_index = 0
-        self.modes = ["DESKTOP MOUSE", "MEDIA REMOTE", "PRESENTATION CLICKER"]
+        self.modes = ["DESKTOP MOUSE", "MEDIA REMOTE", "INTERACTIVE TERMINAL", "PRESENTATION CLICKER"]
         self.force_map = force_map
         self.timeout_sec = timeout_sec
 
         self.last_buttons = 0
+        self.last_pov = 65535
+        self.last_pov_direction = "CENTER"
+        self.last_scroll_time = 0.0
         self.left_pressed = False
         self.right_pressed = False
         self.middle_pressed = False
@@ -252,6 +300,15 @@ class WindowsJoyConDriver:
         user32.keybd_event(vk_code, 0, KEYEVENTF_EXTENDEDKEY, 0)
         time.sleep(0.02)
         user32.keybd_event(vk_code, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0)
+
+    def send_combo(self, keys):
+        if not IS_WINDOWS or not user32:
+            return
+        for k in keys:
+            user32.keybd_event(k, 0, KEYEVENTF_EXTENDEDKEY, 0)
+        time.sleep(0.02)
+        for k in reversed(keys):
+            user32.keybd_event(k, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0)
 
     def move_mouse(self, dx, dy):
         if not IS_WINDOWS or not user32:
@@ -291,6 +348,20 @@ class WindowsJoyConDriver:
         if not IS_WINDOWS or not user32:
             return
         user32.mouse_event(MOUSEEVENTF_WHEEL, 0, 0, int(delta * 120), 0)
+
+    @staticmethod
+    def get_pov_direction(pov: int) -> str:
+        if pov == 65535 or pov < 0:
+            return "CENTER"
+        if pov <= 4500 or pov >= 31500:
+            return "UP"
+        if 4500 < pov < 13500:
+            return "RIGHT"
+        if 13500 <= pov <= 22500:
+            return "DOWN"
+        if 22500 < pov < 31500:
+            return "LEFT"
+        return "CENTER"
 
     def cycle_mode(self):
         self.current_mode_index = (self.current_mode_index + 1) % len(self.modes)
@@ -362,13 +433,18 @@ class WindowsJoyConDriver:
             ("left_click", "LEFT CLICK (Primary action / select)", 0),
             ("right_click", "RIGHT CLICK (Secondary action / menu)", 1),
             ("middle_click", "MIDDLE CLICK (Wheel click / auto-scroll)", 2),
-            ("cycle_mode", "CYCLE MODES (Mouse / Media / Presentation)", 9),
+            ("trackpad_click", "TRACKPAD MECHANICAL CLICK (Sensitive pinpoint click)", 13),
+            ("cycle_mode", "CYCLE MODES (Mouse / Media / Terminal / Presentation)", 9),
             ("screenshot", "SCREENSHOT (Instant PrintScreen)", 13),
             ("home", "HOME / GUIDE (Windows Start Menu)", 12),
             ("media_play_pause", "MEDIA PLAY / PAUSE", 0),
             ("media_vol_down", "VOLUME DOWN", 1),
             ("media_vol_up", "VOLUME UP", 2),
             ("media_next_track", "NEXT TRACK", 3),
+            ("terminal_enter", "TERMINAL ENTER / SUBMIT", 0),
+            ("terminal_backspace", "TERMINAL BACKSPACE", 1),
+            ("terminal_tab", "TERMINAL TAB AUTO-COMPLETE", 2),
+            ("terminal_esc", "TERMINAL ESCAPE / CANCEL", 3),
             ("slide_next", "PRESENTATION NEXT SLIDE", 0),
             ("slide_prev", "PRESENTATION PREV SLIDE", 1),
         ]
@@ -410,11 +486,15 @@ class WindowsJoyConDriver:
             print(f"  {BOLD}{GREEN}✓ Loaded saved button mapping for:{RESET} '{self.controller_name}'")
             return
 
-        # Check partial name matches (e.g. Joy-Con L vs R)
+        # Check partial name matches (e.g. Joy-Con L vs R, PlayStation)
         norm_name = self.controller_name.lower()
         if "joy-con (l)" in norm_name or "left joy-con" in norm_name:
             self.active_mapping = dict(DEFAULT_MAPPINGS["joycon_l"])
             print(f"  {BOLD}{GREEN}✓ Matched built-in profile:{RESET} Nintendo Joy-Con (L)")
+            return
+        elif any(ps in norm_name for ps in ["dualsense", "dualshock", "playstation", "wireless controller"]):
+            self.active_mapping = dict(DEFAULT_MAPPINGS["playstation"])
+            print(f"  {BOLD}{GREEN}✓ Matched built-in profile:{RESET} Sony PlayStation (DualSense / DualShock 4)")
             return
         elif "joy-con" in norm_name or "gamepad" in norm_name or "controller" in norm_name:
             self.active_mapping = dict(DEFAULT_MAPPINGS["default"])
@@ -469,6 +549,7 @@ class WindowsJoyConDriver:
         btn_left = self.active_mapping.get("left_click", 0)
         btn_right = self.active_mapping.get("right_click", 1)
         btn_middle = self.active_mapping.get("middle_click", 2)
+        btn_pad_click = self.active_mapping.get("trackpad_click", 13)
         btn_cycle = self.active_mapping.get("cycle_mode", 9)
         btn_cycle_alt = self.active_mapping.get("cycle_mode_alt", 8)
         btn_screenshot = self.active_mapping.get("screenshot", 13)
@@ -478,6 +559,11 @@ class WindowsJoyConDriver:
         btn_m_voldn = self.active_mapping.get("media_vol_down", 1)
         btn_m_volup = self.active_mapping.get("media_vol_up", 2)
         btn_m_next = self.active_mapping.get("media_next_track", 3)
+
+        btn_t_enter = self.active_mapping.get("terminal_enter", 0)
+        btn_t_back = self.active_mapping.get("terminal_backspace", 1)
+        btn_t_tab = self.active_mapping.get("terminal_tab", 4)
+        btn_t_esc = self.active_mapping.get("terminal_esc", 8)
 
         btn_s_next = self.active_mapping.get("slide_next", 0)
         btn_s_prev = self.active_mapping.get("slide_prev", 1)
@@ -510,12 +596,18 @@ class WindowsJoyConDriver:
                 buttons = info.dwButtons
                 pressed = buttons & ~self.last_buttons
 
+                # D-Pad POV direction & changes
+                pov = info.dwPOV
+                pov_dir = self.get_pov_direction(pov)
+                pov_changed = (pov_dir != self.last_pov_direction)
+                now = time.time()
+
                 # Mode cycling button
                 if (pressed & (1 << btn_cycle)) or (pressed & (1 << btn_cycle_alt)):
                     self.cycle_mode()
 
-                # Dedicated Screenshot Button
-                if pressed & (1 << btn_screenshot):
+                # Dedicated Screenshot Button (when not conflicting with pad click)
+                if (pressed & (1 << btn_screenshot)) and btn_screenshot != btn_pad_click:
                     self.send_key(VK_SNAPSHOT)
                     print(f"\n  {BOLD}{CYAN}📸 [Screenshot]{RESET} Instant PrintScreen triggered")
 
@@ -526,8 +618,9 @@ class WindowsJoyConDriver:
                 curr_mode = self.modes[self.current_mode_index]
 
                 if curr_mode == "DESKTOP MOUSE":
-                    # Left Click
-                    if buttons & (1 << btn_left):
+                    # Left Click (Standard Left Click or Trackpad Physical Click)
+                    is_left_down = bool((buttons & (1 << btn_left)) or (btn_pad_click is not None and (buttons & (1 << btn_pad_click))))
+                    if is_left_down:
                         self.mouse_down("left")
                     else:
                         self.mouse_up("left")
@@ -544,6 +637,22 @@ class WindowsJoyConDriver:
                     else:
                         self.mouse_up("middle")
 
+                    # D-Pad POV Navigation:
+                    # UP / DOWN: Smooth Scroll Wheel
+                    if pov_dir == "UP":
+                        if now - self.last_scroll_time >= 0.07:
+                            self.mouse_wheel(1)
+                            self.last_scroll_time = now
+                    elif pov_dir == "DOWN":
+                        if now - self.last_scroll_time >= 0.07:
+                            self.mouse_wheel(-1)
+                            self.last_scroll_time = now
+                    # LEFT / RIGHT: Browser Back / Forward
+                    elif pov_dir == "LEFT" and pov_changed:
+                        self.send_key(VK_BROWSER_BACK)
+                    elif pov_dir == "RIGHT" and pov_changed:
+                        self.send_key(VK_BROWSER_FORWARD)
+
                 elif curr_mode == "MEDIA REMOTE":
                     fg_app = get_foreground_window_title() or "System Default"
                     if pressed & (1 << btn_m_play):
@@ -557,6 +666,44 @@ class WindowsJoyConDriver:
                         self.send_key(VK_MEDIA_NEXT_TRACK)
                         print(f"\n  {BOLD}{CYAN}⏭ [Media]{RESET} Next Track -> {fg_app}")
 
+                    # D-Pad POV in Media Remote:
+                    if pov_dir == "UP":
+                        if now - self.last_scroll_time >= 0.12:
+                            self.send_key(VK_VOLUME_UP)
+                            self.last_scroll_time = now
+                    elif pov_dir == "DOWN":
+                        if now - self.last_scroll_time >= 0.12:
+                            self.send_key(VK_VOLUME_DOWN)
+                            self.last_scroll_time = now
+                    elif pov_dir == "LEFT" and pov_changed:
+                        self.send_key(VK_MEDIA_PREV_TRACK)
+                    elif pov_dir == "RIGHT" and pov_changed:
+                        self.send_key(VK_MEDIA_NEXT_TRACK)
+
+                elif curr_mode == "INTERACTIVE TERMINAL":
+                    if pressed & (1 << btn_t_enter):
+                        self.send_key(VK_RETURN)
+                    if pressed & (1 << btn_t_back):
+                        self.send_key(VK_BACK)
+                    if pressed & (1 << btn_t_tab):
+                        self.send_key(VK_TAB)
+                    if pressed & (1 << btn_t_esc):
+                        self.send_key(VK_ESCAPE)
+                    # Middle click sends Ctrl+C Interrupt in Terminal mode
+                    if pressed & (1 << btn_middle):
+                        self.send_combo([VK_CONTROL, VK_C])
+                        print(f"\n  {BOLD}{YELLOW}🛑 [Terminal]{RESET} Ctrl+C Interrupt sent")
+
+                    # D-Pad POV in Terminal:
+                    if pov_dir == "UP" and pov_changed:
+                        self.send_key(VK_UP)      # History Up
+                    elif pov_dir == "DOWN" and pov_changed:
+                        self.send_key(VK_DOWN)    # History Down
+                    elif pov_dir == "LEFT" and pov_changed:
+                        self.send_key(VK_LEFT)    # Cursor Left
+                    elif pov_dir == "RIGHT" and pov_changed:
+                        self.send_key(VK_RIGHT)   # Cursor Right
+
                 elif curr_mode == "PRESENTATION CLICKER":
                     if pressed & (1 << btn_s_next):
                         self.send_key(VK_RIGHT)
@@ -568,6 +715,8 @@ class WindowsJoyConDriver:
                         self.send_key(VK_ESCAPE)
 
                 self.last_buttons = buttons
+                self.last_pov = pov
+                self.last_pov_direction = pov_dir
                 time.sleep(0.008)  # ~125 Hz polling rate
 
         except KeyboardInterrupt:
