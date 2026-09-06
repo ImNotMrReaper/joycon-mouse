@@ -13,7 +13,8 @@ import time
 import math
 import json
 import argparse
-from typing import Dict, Any, Optional
+import threading
+from typing import Dict, Any, Optional, List, Tuple
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -31,6 +32,12 @@ if IS_WINDOWS:
 
     winmm = ctypes.windll.winmm
     user32 = ctypes.windll.user32
+
+    class XINPUT_VIBRATION(ctypes.Structure):
+        _fields_ = [
+            ("wLeftMotorSpeed", wintypes.WORD),
+            ("wRightMotorSpeed", wintypes.WORD),
+        ]
 
     class JOYINFOEX(ctypes.Structure):
         _fields_ = [
@@ -124,6 +131,9 @@ else:
         pass
 
     class JOYCAPSW:
+        pass
+
+    class XINPUT_VIBRATION:
         pass
 
     winmm = None
@@ -273,6 +283,93 @@ def get_foreground_window_title() -> str:
         return ""
 
 
+class WindowsRumbleManager:
+    """Universal controller vibration and haptic feedback manager for Windows.
+    Zero external dependencies (pure ctypes + xinput1_4.dll / xinput1_3.dll / xinput9_1_0.dll).
+    Provides tactile haptic pulses on connection, disconnection, mode cycling,
+    media scrubbing gestures, screenshots, and button diagnostics across all vibrating controllers."""
+
+    def __init__(self, enabled: bool = True, debug: bool = False):
+        self.enabled = enabled
+        self.debug = debug
+        self.xinput = None
+        self._load_xinput()
+
+    def _load_xinput(self):
+        if not IS_WINDOWS:
+            return
+        for dll_name in ["xinput1_4.dll", "xinput1_3.dll", "xinput9_1_0.dll"]:
+            try:
+                lib = ctypes.windll.LoadLibrary(dll_name)
+                if lib and hasattr(lib, "XInputSetState"):
+                    lib.XInputSetState.argtypes = [wintypes.DWORD, ctypes.POINTER(XINPUT_VIBRATION)]
+                    lib.XInputSetState.restype = wintypes.DWORD
+                    self.xinput = lib
+                    if self.debug:
+                        print(f"  [DEBUG] XInput vibration subsystem active: {dll_name}")
+                    break
+            except Exception:
+                continue
+
+    def _pulse_worker(self, duration_ms: int, strong: int, weak: int, count: int, interval_ms: int):
+        if not self.xinput:
+            return
+
+        vib_on = XINPUT_VIBRATION(max(0, min(65535, int(strong))), max(0, min(65535, int(weak))))
+        vib_off = XINPUT_VIBRATION(0, 0)
+
+        for i in range(count):
+            active_slots = []
+            for slot in range(4):
+                try:
+                    res = self.xinput.XInputSetState(slot, ctypes.byref(vib_on))
+                    if res == 0:  # ERROR_SUCCESS
+                        active_slots.append(slot)
+                except Exception:
+                    pass
+
+            time.sleep(max(0.01, duration_ms / 1000.0))
+
+            for slot in active_slots:
+                try:
+                    self.xinput.XInputSetState(slot, ctypes.byref(vib_off))
+                except Exception:
+                    pass
+
+            if count > 1 and i < count - 1:
+                time.sleep(max(0.01, interval_ms / 1000.0))
+
+    def pulse(self, duration_ms: int = 50, strong: int = 0x6000, weak: int = 0x6000, count: int = 1, interval_ms: int = 60) -> None:
+        if not self.enabled or not self.xinput:
+            return
+        t = threading.Thread(
+            target=self._pulse_worker,
+            args=(duration_ms, strong, weak, count, interval_ms),
+            daemon=True
+        )
+        t.start()
+
+    def connect(self) -> None:
+        """Crisp double-buzz welcome when a controller connects."""
+        self.pulse(duration_ms=65, strong=0x6000, weak=0x8000, count=2, interval_ms=75)
+
+    def disconnect(self) -> None:
+        """Distinct warning buzz when a controller disconnects."""
+        self.pulse(duration_ms=200, strong=0x9000, weak=0x5000, count=1)
+
+    def mode_switch(self) -> None:
+        """Tactile haptic click when cycling controller modes."""
+        self.pulse(duration_ms=45, strong=0x5000, weak=0x7000, count=1)
+
+    def screenshot(self) -> None:
+        """Double shutter click when capturing a screenshot."""
+        self.pulse(duration_ms=35, strong=0x8000, weak=0x9000, count=2, interval_ms=45)
+
+    def tick(self) -> None:
+        """Subtle micro-tick on media seek, volume change, or action."""
+        self.pulse(duration_ms=25, strong=0x3000, weak=0x4000, count=1)
+
+
 class WindowsJoyConDriver:
     """Windows Joy-Con & Gamepad Mouse Driver using pure standard library ctypes."""
 
@@ -283,12 +380,15 @@ class WindowsJoyConDriver:
         sensitivity: Optional[float] = None,
         deadzone: Optional[float] = None,
         debug: bool = False,
-        no_reconnect: bool = False
+        no_reconnect: bool = False,
+        no_rumble: bool = False
     ):
         self.sensitivity = sensitivity if sensitivity is not None else 1.0
         self.deadzone = deadzone if deadzone is not None else 0.10
         self.debug = debug
         self.no_reconnect = no_reconnect
+        self.no_rumble = no_rumble
+        self.rumble_enabled = not no_rumble
         self.current_mode_index = 0
         self.modes = ["DESKTOP MOUSE", "MEDIA REMOTE", "INTERACTIVE TERMINAL", "PRESENTATION CLICKER"]
         self.force_map = force_map
@@ -310,6 +410,7 @@ class WindowsJoyConDriver:
         self.controller_name = "Unknown Controller"
         self.active_mapping = dict(DEFAULT_MAPPINGS["default"])
         self.load_config(user_sens=sensitivity, user_deadzone=deadzone)
+        self.rumble = WindowsRumbleManager(enabled=self.rumble_enabled, debug=self.debug)
 
     def load_config(self, user_sens: Optional[float] = None, user_deadzone: Optional[float] = None):
         config_path = os.path.join(get_config_dir(), "config.json")
@@ -321,6 +422,10 @@ class WindowsJoyConDriver:
                         self.sensitivity = float(cfg.get("sensitivity", 1.0))
                     if user_deadzone is None:
                         self.deadzone = float(cfg.get("deadzone", 0.10))
+                    if self.no_rumble:
+                        self.rumble_enabled = False
+                    else:
+                        self.rumble_enabled = bool(cfg.get("rumble_enabled", cfg.get("rumble", True)))
             except Exception:
                 pass
 
@@ -417,6 +522,8 @@ class WindowsJoyConDriver:
         self.current_mode_index = (self.current_mode_index + 1) % len(self.modes)
         mode = self.modes[self.current_mode_index]
         print(f"\n{BOLD}{PURPLE}🔄 Switched Mode:{RESET} {BOLD}{GREEN}[{mode}]{RESET}")
+        if self.rumble:
+            self.rumble.mode_switch()
 
     def get_controller_name(self, dev_id: int) -> str:
         if not IS_WINDOWS or not winmm:
@@ -593,6 +700,9 @@ class WindowsJoyConDriver:
 
         print(f"\n  {GREEN}✓ Active Gamepad Device #{dev_id} ({self.controller_name})!{RESET}")
         print(f"  {DIM}Move the analog stick to guide cursor. Cycle modes with designated mode button.{RESET}\n")
+        if self.rumble:
+            self.rumble.connect()
+            print(f"  {BOLD}{PURPLE}📳 [Haptics]{RESET} Controller vibration active\n")
 
         info = JOYINFOEX()
         info.dwSize = ctypes.sizeof(JOYINFOEX)
@@ -628,12 +738,16 @@ class WindowsJoyConDriver:
             while True:
                 res = winmm.joyGetPosEx(dev_id, ctypes.byref(info))
                 if res != JOYERR_NOERROR:
+                    if self.rumble:
+                        self.rumble.disconnect()
                     if self.no_reconnect:
                         print(f"\n{YELLOW}⚠️  Controller disconnected. Exiting (--no-reconnect).{RESET}")
                         break
                     print(f"\n{YELLOW}⚠️  Controller disconnected. Waiting for reconnect...{RESET}")
                     time.sleep(1)
                     dev_id = self.find_connected_controller()
+                    if dev_id is not None and self.rumble:
+                        self.rumble.connect()
                     continue
 
                 # Normalize stick axes: 0..65535, center = 32768
@@ -667,6 +781,8 @@ class WindowsJoyConDriver:
                 if (pressed & (1 << btn_screenshot)) and btn_screenshot != btn_pad_click:
                     self.send_key(VK_SNAPSHOT)
                     print(f"\n  {BOLD}{CYAN}📸 [Screenshot]{RESET} Instant PrintScreen triggered")
+                    if self.rumble:
+                        self.rumble.screenshot()
 
                 # Dedicated Home / Guide Button
                 if pressed & (1 << btn_home):
@@ -764,21 +880,29 @@ class WindowsJoyConDriver:
                             self.send_key(VK_RIGHT)
                             print(f"\n  {BOLD}{CYAN}⏩ [Media Seek]{RESET} Forward (+5s) -> {fg_app}")
                             self.last_seek_time = now
+                            if self.rumble:
+                                self.rumble.tick()
                     elif norm_x < -0.55:
                         if now - self.last_seek_time >= 0.25:
                             self.send_key(VK_LEFT)
                             print(f"\n  {BOLD}{CYAN}⏪ [Media Seek]{RESET} Rewind (-5s) -> {fg_app}")
                             self.last_seek_time = now
+                            if self.rumble:
+                                self.rumble.tick()
 
                     # Vertical deflection adjusts volume up/down
                     if norm_y < -0.65:
                         if now - self.last_vol_time >= 0.15:
                             self.send_key(VK_VOLUME_UP)
                             self.last_vol_time = now
+                            if self.rumble:
+                                self.rumble.tick()
                     elif norm_y > 0.65:
                         if now - self.last_vol_time >= 0.15:
                             self.send_key(VK_VOLUME_DOWN)
                             self.last_vol_time = now
+                            if self.rumble:
+                                self.rumble.tick()
 
                     # Button Controls: Play/Pause, Volume, Next/Prev Track, Mute
                     if pressed & (1 << btn_m_play):
@@ -788,33 +912,53 @@ class WindowsJoyConDriver:
                         else:
                             self.send_key(VK_MEDIA_PLAY_PAUSE)
                             print(f"\n  {BOLD}{GREEN}▶/⏸ [Media]{RESET} Play/Pause -> {fg_app}")
+                        if self.rumble:
+                            self.rumble.tick()
                     if pressed & (1 << btn_m_voldn):
                         self.send_key(VK_VOLUME_DOWN)
+                        if self.rumble:
+                            self.rumble.tick()
                     if pressed & (1 << btn_m_volup):
                         self.send_key(VK_VOLUME_UP)
+                        if self.rumble:
+                            self.rumble.tick()
                     if pressed & (1 << btn_m_next):
                         self.send_key(VK_MEDIA_NEXT_TRACK)
                         print(f"\n  {BOLD}{CYAN}⏭ [Media]{RESET} Next Track -> {fg_app}")
+                        if self.rumble:
+                            self.rumble.tick()
                     if btn_m_prev is not None and (pressed & (1 << btn_m_prev)):
                         self.send_key(VK_MEDIA_PREV_TRACK)
                         print(f"\n  {BOLD}{CYAN}⏮ [Media]{RESET} Previous Track -> {fg_app}")
+                        if self.rumble:
+                            self.rumble.tick()
                     if btn_m_mute is not None and (pressed & (1 << btn_m_mute)):
                         self.send_key(VK_VOLUME_MUTE)
                         print(f"\n  {BOLD}{YELLOW}🔇 [Media]{RESET} Toggle Mute Audio")
+                        if self.rumble:
+                            self.rumble.tick()
 
                     # D-Pad POV in Media Remote:
                     if pov_dir == "UP":
                         if now - self.last_vol_time >= 0.12:
                             self.send_key(VK_VOLUME_UP)
                             self.last_vol_time = now
+                            if self.rumble:
+                                self.rumble.tick()
                     elif pov_dir == "DOWN":
                         if now - self.last_vol_time >= 0.12:
                             self.send_key(VK_VOLUME_DOWN)
                             self.last_vol_time = now
+                            if self.rumble:
+                                self.rumble.tick()
                     elif pov_dir == "LEFT" and pov_changed:
                         self.send_key(VK_MEDIA_PREV_TRACK)
+                        if self.rumble:
+                            self.rumble.tick()
                     elif pov_dir == "RIGHT" and pov_changed:
                         self.send_key(VK_MEDIA_NEXT_TRACK)
+                        if self.rumble:
+                            self.rumble.tick()
 
                 elif curr_mode == "INTERACTIVE TERMINAL":
                     if self.left_pressed:
@@ -834,16 +978,26 @@ class WindowsJoyConDriver:
 
                     if pressed & (1 << btn_t_enter):
                         self.send_key(VK_RETURN)
+                        if self.rumble:
+                            self.rumble.tick()
                     if pressed & (1 << btn_t_back):
                         self.send_key(VK_BACK)
+                        if self.rumble:
+                            self.rumble.tick()
                     if pressed & (1 << btn_t_tab):
                         self.send_key(VK_TAB)
+                        if self.rumble:
+                            self.rumble.tick()
                     if pressed & (1 << btn_t_esc):
                         self.send_key(VK_ESCAPE)
+                        if self.rumble:
+                            self.rumble.tick()
                     # Middle click sends Ctrl+C Interrupt in Terminal mode
                     if pressed & (1 << btn_middle):
                         self.send_combo([VK_CONTROL, VK_C])
                         print(f"\n  {BOLD}{YELLOW}🛑 [Terminal]{RESET} Ctrl+C Interrupt sent")
+                        if self.rumble:
+                            self.rumble.pulse(duration_ms=60, strong=0x7000, weak=0x7000)
 
                     # D-Pad POV in Terminal:
                     if pov_dir == "UP" and pov_changed:
@@ -866,12 +1020,20 @@ class WindowsJoyConDriver:
                     self.acc_y = 0.0
                     if pressed & (1 << btn_s_next):
                         self.send_key(VK_RIGHT)
+                        if self.rumble:
+                            self.rumble.tick()
                     if pressed & (1 << btn_s_prev):
                         self.send_key(VK_LEFT)
+                        if self.rumble:
+                            self.rumble.tick()
                     if pressed & (1 << btn_s_f5):
                         self.send_key(VK_F5)
+                        if self.rumble:
+                            self.rumble.tick()
                     if pressed & (1 << btn_s_esc):
                         self.send_key(VK_ESCAPE)
+                        if self.rumble:
+                            self.rumble.tick()
 
                 self.last_buttons = buttons
                 self.last_pov = pov
@@ -975,12 +1137,85 @@ def run_setup_wizard_windows():
     except (ValueError, EOFError, KeyboardInterrupt):
         pass
 
+    cur_rumble = current_cfg.get("rumble_enabled", current_cfg.get("rumble", True))
+    rumble_str = "Enabled" if cur_rumble else "Disabled"
+    print(f"\nController Vibration & Haptics: {BOLD}{rumble_str}{RESET}")
+    try:
+        ans = input("Enable vibration haptics? [Y/n] (or press Enter to keep): ").strip().lower()
+        if ans in ("y", "yes"):
+            current_cfg["rumble_enabled"] = True
+            current_cfg["rumble"] = True
+        elif ans in ("n", "no"):
+            current_cfg["rumble_enabled"] = False
+            current_cfg["rumble"] = False
+    except (EOFError, KeyboardInterrupt):
+        pass
+
     try:
         with open(cfg_path, "w", encoding="utf-8") as f:
             json.dump(current_cfg, f, indent=2)
         print(f"\n{BOLD}{GREEN}✓ Settings saved to {cfg_path}{RESET}\n")
     except Exception as e:
         print(f"\n{YELLOW}Could not save settings: {e}{RESET}\n")
+
+
+def test_rumble_windows() -> int:
+    print("\n" + "=" * 70)
+    print(f"  {BOLD}{PURPLE}📳 JOY-CON MOUSE HAPTIC VIBRATION DIAGNOSTIC (Windows Edition){RESET}")
+    print("=" * 70)
+
+    if not IS_WINDOWS:
+        print(f"  {YELLOW}Notice: Controller vibration test requires Windows OS.{RESET}\n")
+        return 0
+
+    rumble = WindowsRumbleManager(enabled=True, debug=True)
+    if not rumble.xinput:
+        print(f"  {RED}❌ XInput vibration subsystem could not be initialized.{RESET}")
+        print("     Ensure Windows Game Input or DirectX runtime is available.\n")
+        return 1
+
+    print(f"\n  {CYAN}Checking for connected controllers with vibration support...{RESET}")
+    active_found = False
+    vib_zero = XINPUT_VIBRATION(0, 0)
+    for slot in range(4):
+        try:
+            res = rumble.xinput.XInputSetState(slot, ctypes.byref(vib_zero))
+            if res == 0:
+                print(f"  {GREEN}✓ Controller #{slot} is CONNECTED and ready for vibration!{RESET}")
+                active_found = True
+        except Exception:
+            pass
+
+    if not active_found:
+        print(f"  {YELLOW}⚠️  No active XInput gamepad detected in slots 0-3.{RESET}")
+        print("     Make sure your controller is paired and turned on.")
+        print("     (Sending diagnostic vibration signals across all slots anyway...)\n")
+
+    steps = [
+        ("Left Heavy Motor (Low-Frequency Rumble)", 0xC000, 0x0000, 400),
+        ("Right Light Motor (High-Frequency Haptic)", 0x0000, 0xC000, 400),
+        ("Dual Motors (Full Power Burst)", 0xFFFF, 0xFFFF, 300),
+        ("Mode Switch Haptic Click", 0x5000, 0x7000, 50),
+        ("Camera Shutter Double-Pulse", 0x8000, 0x9000, 35),
+    ]
+
+    for label, strong, weak, dur in steps:
+        print(f"  👉 Testing: {BOLD}{CYAN}{label}{RESET}... ", end="", flush=True)
+        if label == "Camera Shutter Double-Pulse":
+            rumble.screenshot()
+            time.sleep(0.35)
+        elif label == "Mode Switch Haptic Click":
+            rumble.mode_switch()
+            time.sleep(0.30)
+        else:
+            rumble.pulse(duration_ms=dur, strong=strong, weak=weak)
+            time.sleep((dur / 1000.0) + 0.25)
+        print(f"{BOLD}{GREEN}✓ Pulse sent!{RESET}")
+
+    print("\n" + "=" * 70)
+    print(f"  {BOLD}{GREEN}✅ Haptic vibration test sequence completed!{RESET}")
+    print("=" * 70 + "\n")
+    return 0
 
 
 def main():
@@ -992,6 +1227,8 @@ def main():
     parser.add_argument("--check", action="store_true", help="Non-blocking device check (exits 0 if controller present, 1 otherwise)")
     parser.add_argument("--timeout", type=int, default=None, help="Maximum seconds to wait for controller before exiting")
     parser.add_argument("--test-buttons", action="store_true", help="Launch real-time interactive button and stick diagnostic tool")
+    parser.add_argument("--test-rumble", action="store_true", help="Test controller physical haptic vibration and exit")
+    parser.add_argument("--no-rumble", action="store_true", help="Disable physical haptic vibration feedback")
     parser.add_argument("--list", action="store_true", help="List detected WinMM gamepads and Joy-Cons")
     parser.add_argument("--list-modes", action="store_true", help="List all modular modes and features")
     parser.add_argument("--setup", action="store_true", help="Launch interactive setup wizard to configure sensitivity and deadzone")
@@ -1000,6 +1237,9 @@ def main():
     parser.add_argument("-V", "--version", action="version", version="Joy-Con Mouse for Windows v1.2.2")
 
     args = parser.parse_args()
+
+    if args.test_rumble:
+        return test_rumble_windows()
 
     if args.list_modes:
         return list_modes_windows()
@@ -1051,7 +1291,8 @@ def main():
         sensitivity=args.sensitivity,
         deadzone=args.deadzone,
         debug=args.debug,
-        no_reconnect=args.no_reconnect
+        no_reconnect=args.no_reconnect,
+        no_rumble=args.no_rumble
     )
     driver.run()
     return 0

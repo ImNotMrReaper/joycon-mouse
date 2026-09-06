@@ -25,6 +25,47 @@ if hasattr(sys.stdout, "reconfigure"):
 IS_WINDOWS = sys.platform.startswith("win")
 winmm = ctypes.windll.winmm if IS_WINDOWS else None
 
+# --- XInput Haptic Vibration for Button Testing ---
+class XINPUT_VIBRATION(ctypes.Structure):
+    _fields_ = [
+        ("wLeftMotorSpeed", wintypes.WORD),
+        ("wRightMotorSpeed", wintypes.WORD),
+    ]
+
+xinput_dll = None
+if IS_WINDOWS:
+    for dll in ["xinput1_4.dll", "xinput1_3.dll", "xinput9_1_0.dll"]:
+        try:
+            xinput_dll = ctypes.windll.LoadLibrary(dll)
+            if xinput_dll and hasattr(xinput_dll, "XInputSetState"):
+                xinput_dll.XInputSetState.argtypes = [wintypes.DWORD, ctypes.POINTER(XINPUT_VIBRATION)]
+                xinput_dll.XInputSetState.restype = wintypes.DWORD
+                break
+        except Exception:
+            continue
+
+def trigger_button_haptic(duration_ms: int = 35, strong: int = 0x5000, weak: int = 0x6000):
+    if not xinput_dll:
+        return
+    import threading
+    def _worker():
+        vib_on = XINPUT_VIBRATION(max(0, min(65535, strong)), max(0, min(65535, weak)))
+        vib_off = XINPUT_VIBRATION(0, 0)
+        active = []
+        for s in range(4):
+            try:
+                if xinput_dll.XInputSetState(s, ctypes.byref(vib_on)) == 0:
+                    active.append(s)
+            except Exception:
+                pass
+        time.sleep(max(0.01, duration_ms / 1000.0))
+        for s in active:
+            try:
+                xinput_dll.XInputSetState(s, ctypes.byref(vib_off))
+            except Exception:
+                pass
+    threading.Thread(target=_worker, daemon=True).start()
+
 # --- WinMM Structures & Constants ---
 class JOYINFOEX(ctypes.Structure):
     _fields_ = [
@@ -244,10 +285,12 @@ def main() -> int:
         while True:
             res = winmm.joyGetPosEx(chosen_id, ctypes.byref(info))
             if res != JOYERR_NOERROR:
+                trigger_button_haptic(duration_ms=150, strong=0x8000, weak=0x4000)
                 print(f"\n{YELLOW}⚠️  Controller disconnected or sleeping. Waiting for reconnection...{RESET}")
                 time.sleep(1)
                 devices = find_controllers()
                 if any(d[0] == chosen_id for d in devices):
+                    trigger_button_haptic(duration_ms=80, strong=0x6000, weak=0x8000)
                     print(f"{GREEN}✓ Reconnected to Controller #{chosen_id}!{RESET}")
                 continue
 
@@ -265,8 +308,9 @@ def main() -> int:
 
                         print(f"[{t_stamp}] {state_str} | Bit: {bit:2d} ({hex_val}) | {btn_name}")
 
-                        # Show mapped mode actions when pressed
+                        # Show mapped mode actions when pressed & trigger tactile haptic click
                         if is_pressed:
+                            trigger_button_haptic(duration_ms=30, strong=0x4000, weak=0x5000)
                             print("   Mapped Actions Across Modes:")
                             for mode_name, actions in MODE_BUTTON_ACTIONS.items():
                                 action = actions.get(bit, "(Unmapped)")
