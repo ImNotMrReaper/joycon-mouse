@@ -270,9 +270,19 @@ def get_foreground_window_title() -> str:
 class WindowsJoyConDriver:
     """Windows Joy-Con & Gamepad Mouse Driver using pure standard library ctypes."""
 
-    def __init__(self, force_map: bool = False, timeout_sec: Optional[int] = None):
-        self.sensitivity = 1.0
-        self.deadzone = 0.10
+    def __init__(
+        self,
+        force_map: bool = False,
+        timeout_sec: Optional[int] = None,
+        sensitivity: Optional[float] = None,
+        deadzone: Optional[float] = None,
+        debug: bool = False,
+        no_reconnect: bool = False
+    ):
+        self.sensitivity = sensitivity if sensitivity is not None else 1.0
+        self.deadzone = deadzone if deadzone is not None else 0.10
+        self.debug = debug
+        self.no_reconnect = no_reconnect
         self.current_mode_index = 0
         self.modes = ["DESKTOP MOUSE", "MEDIA REMOTE", "INTERACTIVE TERMINAL", "PRESENTATION CLICKER"]
         self.force_map = force_map
@@ -291,16 +301,18 @@ class WindowsJoyConDriver:
 
         self.controller_name = "Unknown Controller"
         self.active_mapping = dict(DEFAULT_MAPPINGS["default"])
-        self.load_config()
+        self.load_config(user_sens=sensitivity, user_deadzone=deadzone)
 
-    def load_config(self):
+    def load_config(self, user_sens: Optional[float] = None, user_deadzone: Optional[float] = None):
         config_path = os.path.join(get_config_dir(), "config.json")
         if os.path.exists(config_path):
             try:
                 with open(config_path, "r", encoding="utf-8") as f:
                     cfg = json.load(f)
-                    self.sensitivity = float(cfg.get("sensitivity", 1.0))
-                    self.deadzone = float(cfg.get("deadzone", 0.10))
+                    if user_sens is None:
+                        self.sensitivity = float(cfg.get("sensitivity", 1.0))
+                    if user_deadzone is None:
+                        self.deadzone = float(cfg.get("deadzone", 0.10))
             except Exception:
                 pass
 
@@ -604,6 +616,9 @@ class WindowsJoyConDriver:
             while True:
                 res = winmm.joyGetPosEx(dev_id, ctypes.byref(info))
                 if res != JOYERR_NOERROR:
+                    if self.no_reconnect:
+                        print(f"\n{YELLOW}⚠️  Controller disconnected. Exiting (--no-reconnect).{RESET}")
+                        break
                     print(f"\n{YELLOW}⚠️  Controller disconnected. Waiting for reconnect...{RESET}")
                     time.sleep(1)
                     dev_id = self.find_connected_controller()
@@ -649,6 +664,9 @@ class WindowsJoyConDriver:
                 # Check button state changes
                 buttons = info.dwButtons
                 pressed = buttons & ~self.last_buttons
+
+                if self.debug and pressed:
+                    print(f"  [DEBUG] Buttons: 0x{buttons:04X} Pressed: 0x{pressed:04X} POV: {info.dwPOV}")
 
                 # D-Pad POV direction & changes
                 pov = info.dwPOV
@@ -787,14 +805,141 @@ class WindowsJoyConDriver:
             print(f"\n{GREEN}Joy-Con Mouse for Windows stopped cleanly.{RESET}\n")
 
 
+def list_controllers_windows() -> int:
+    if not IS_WINDOWS or not winmm:
+        print("\nDetected Controllers on Windows (WinMM):")
+        print("  [Notice] WinMM controller scanning requires Windows OS.\n")
+        return 0
+    num_devs = winmm.joyGetNumDevs()
+    info = JOYINFOEX()
+    info.dwSize = ctypes.sizeof(JOYINFOEX)
+    info.dwFlags = JOY_RETURNALL
+
+    found = []
+    for dev_id in range(num_devs):
+        if winmm.joyGetPosEx(dev_id, ctypes.byref(info)) == JOYERR_NOERROR:
+            caps = JOYCAPSW()
+            if winmm.joyGetDevCapsW(dev_id, ctypes.byref(caps), ctypes.sizeof(JOYCAPSW)) == JOYERR_NOERROR:
+                name = caps.szPname or f"Gamepad #{dev_id}"
+                mid = f"0x{caps.wMid:04x}"
+                pid = f"0x{caps.wPid:04x}"
+                btns = caps.wNumButtons
+                axes = caps.wNumAxes
+            else:
+                name = f"Gamepad #{dev_id}"
+                mid, pid, btns, axes = "N/A", "N/A", 16, 6
+            found.append((dev_id, name, mid, pid, btns, axes))
+
+    print("\nDetected Controllers on Windows (WinMM):")
+    if not found:
+        print("  No compatible Joy-Cons or Gamepads detected.")
+        print("  Ensure Bluetooth pairing or USB connection is established in Windows Settings.")
+    else:
+        for dev_id, name, mid, pid, btns, axes in found:
+            print(f"  [{dev_id}] {BOLD}{name}{RESET} (MID: {mid}, PID: {pid}, Buttons: {btns}, Axes: {axes})")
+    print()
+    return 0
+
+
+def list_modes_windows() -> int:
+    modes_data = [
+        ("1", "[ENABLED]", "Built-in", "DESKTOP MOUSE (Precision Stick Pointer)", "Left Stick cursor, scroll wheel, click & drag"),
+        ("2", "[ENABLED]", "Built-in", "UNIVERSAL MEDIA REMOTE", "Controls YouTube, Spotify, VLC, Netflix, media players"),
+        ("3", "[ENABLED]", "Built-in", "INTERACTIVE TERMINAL CONTROLLER", "Hands-free terminal: Enter, Backspace, Tab, History Up/Down, Esc"),
+        ("4", "[ENABLED]", "Built-in", "PRESENTATION CLICKER", "Next/Previous slide, F5 slideshow start, Escape"),
+    ]
+    print("\n" + "=" * 80)
+    print("  🎮 JOY-CON MOUSE MODULAR CONTROLLER MODES (Windows Edition)")
+    print("=" * 80)
+    print(f"  {'#':<4} {'STATUS':<10} {'TYPE':<10} {'MODE NAME':<34} {'FEATURES'}")
+    print("-" * 80)
+    for idx, status, type_str, name, desc in modes_data:
+        print(f"  [{idx}]  {status:<10} {type_str:<10} {name:<34} {desc}")
+    print("=" * 80 + "\n")
+    return 0
+
+
+def run_setup_wizard_windows():
+    print("\n" + "=" * 70)
+    print(f"  {BOLD}{PURPLE}🎮 JOY-CON MOUSE SETUP WIZARD (Windows Edition){RESET}")
+    print("=" * 70)
+    cfg_dir = get_config_dir()
+    cfg_path = os.path.join(cfg_dir, "config.json")
+    current_cfg = {}
+    if os.path.exists(cfg_path):
+        try:
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                current_cfg = json.load(f)
+        except Exception:
+            pass
+
+    cur_sens = current_cfg.get("sensitivity", 1.0)
+    cur_deadzone = current_cfg.get("deadzone", 0.10)
+
+    print(f"\nCurrent pointer sensitivity: {BOLD}{cur_sens}x{RESET}")
+    try:
+        new_sens = input("Enter new sensitivity multiplier (or press Enter to keep): ").strip()
+        if new_sens:
+            current_cfg["sensitivity"] = float(new_sens)
+    except (ValueError, EOFError, KeyboardInterrupt):
+        pass
+
+    print(f"\nCurrent analog deadzone: {BOLD}{cur_deadzone}{RESET}")
+    try:
+        new_dz = input("Enter new deadzone 0.0-0.5 (or press Enter to keep): ").strip()
+        if new_dz:
+            current_cfg["deadzone"] = float(new_dz)
+    except (ValueError, EOFError, KeyboardInterrupt):
+        pass
+
+    try:
+        with open(cfg_path, "w", encoding="utf-8") as f:
+            json.dump(current_cfg, f, indent=2)
+        print(f"\n{BOLD}{GREEN}✓ Settings saved to {cfg_path}{RESET}\n")
+    except Exception as e:
+        print(f"\n{YELLOW}Could not save settings: {e}{RESET}\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Joy-Con Mouse & Universal Remote for Windows")
+    parser.add_argument("-s", "--sensitivity", type=float, default=None, help="Pointer sensitivity multiplier (e.g. 1.2 or 0.8)")
+    parser.add_argument("--deadzone", type=float, default=None, help="Analog stick deadzone threshold (default: 0.10)")
     parser.add_argument("--map", "--configure", action="store_true", help="Launch interactive button calibration wizard")
     parser.add_argument("--list-mappings", action="store_true", help="Display all saved controller button profiles")
     parser.add_argument("--check", action="store_true", help="Non-blocking device check (exits 0 if controller present, 1 otherwise)")
     parser.add_argument("--timeout", type=int, default=None, help="Maximum seconds to wait for controller before exiting")
+    parser.add_argument("--test-buttons", action="store_true", help="Launch real-time interactive button and stick diagnostic tool")
+    parser.add_argument("--list", action="store_true", help="List detected WinMM gamepads and Joy-Cons")
+    parser.add_argument("--list-modes", action="store_true", help="List all modular modes and features")
+    parser.add_argument("--setup", action="store_true", help="Launch interactive setup wizard to configure sensitivity and deadzone")
+    parser.add_argument("-v", "--verbose", "--debug", dest="debug", action="store_true", help="Print real-time debug events")
+    parser.add_argument("--no-reconnect", action="store_true", help="Do not wait and auto-reconnect on disconnect")
+    parser.add_argument("-V", "--version", action="version", version="Joy-Con Mouse for Windows v1.2.2")
 
     args = parser.parse_args()
+
+    if args.list_modes:
+        return list_modes_windows()
+
+    if args.list:
+        return list_controllers_windows()
+
+    if args.setup:
+        run_setup_wizard_windows()
+        return 0
+
+    if args.test_buttons:
+        try:
+            import test_buttons
+            return test_buttons.main()
+        except ImportError:
+            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_buttons.py")
+            if os.path.exists(script_path):
+                import runpy
+                runpy.run_path(script_path, run_name="__main__")
+                return 0
+            print(f"{RED}[Error] test_buttons.py not found.{RESET}")
+            return 1
 
     if args.list_mappings:
         profiles = load_all_mappings()
@@ -817,7 +962,14 @@ def main():
         print("NO_CONTROLLER")
         return 1
 
-    driver = WindowsJoyConDriver(force_map=args.map, timeout_sec=args.timeout)
+    driver = WindowsJoyConDriver(
+        force_map=args.map,
+        timeout_sec=args.timeout,
+        sensitivity=args.sensitivity,
+        deadzone=args.deadzone,
+        debug=args.debug,
+        no_reconnect=args.no_reconnect
+    )
     driver.run()
     return 0
 
