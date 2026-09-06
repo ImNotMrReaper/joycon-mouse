@@ -17,3 +17,4 @@ security_manager.py
 .idea/
 .vscode/
 .DS_Store
+.agy_link/

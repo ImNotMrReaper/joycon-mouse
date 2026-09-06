@@ -19,18 +19,24 @@ import sys
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Protocol, Set, Tuple, runtime_checkable
 
 # Real-time stdout line buffering for systemd service and background execution
 try:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(line_buffering=True)
-except Exception:
+except (AttributeError, OSError):
     pass
 
 # Dynamic plugin auto-loader
 from modes import load_all_modes
 from modes.base import BaseMode
+
+@runtime_checkable
+class SecurityManagerProtocol(Protocol):
+    def has_code(self, device_type: str) -> bool: ...
+    def process_key_event(self, code: int, device_type: str, uinput: Any) -> bool: ...
+    def record_code_interactive(self, fd: int, device_type: str, device_name: str) -> None: ...
 
 # Load optional security manager if present locally
 try:
@@ -74,7 +80,7 @@ def is_wsl_environment() -> bool:
                 content = f.read().lower()
                 if "microsoft" in content or "wsl" in content:
                     return True
-        except Exception:
+        except OSError:
             pass
     if "WSL_DISTRO_NAME" in os.environ or "WSL_INTEROP" in os.environ:
         return True
@@ -252,7 +258,7 @@ class ConfigManager:
                     if isinstance(data, dict) and "profiles" in data:
                         return data["profiles"]
                     return data
-            except Exception:
+            except (OSError, json.JSONDecodeError):
                 pass
         return dict(DEFAULT_CONTROLLER_PROFILES)
 
@@ -263,7 +269,7 @@ class ConfigManager:
             os.makedirs(self.config_dir, exist_ok=True)
             with open(path, "w", encoding="utf-8") as f:
                 json.dump({"version": "1.0", "profiles": profiles}, f, indent=4)
-        except Exception as e:
+        except OSError as e:
             print(f"[Config Error] Could not save {path}: {e}")
 
     def load_config(self) -> Dict[str, Any]:
@@ -274,14 +280,14 @@ class ConfigManager:
                     user_cfg = json.load(f)
                     if isinstance(user_cfg, dict):
                         cfg.update(user_cfg)
-            except Exception as e:
+            except (OSError, json.JSONDecodeError) as e:
                 print(f"[Config Warning] Could not read {self.config_file}: {e}")
         else:
             try:
                 os.makedirs(self.config_dir, exist_ok=True)
                 with open(self.config_file, "w", encoding="utf-8") as f:
                     json.dump(cfg, f, indent=4)
-            except Exception:
+            except OSError:
                 pass
         return cfg
 
@@ -291,17 +297,16 @@ class ConfigManager:
             os.makedirs(self.config_dir, exist_ok=True)
             with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(self.config, f, indent=4)
-        except Exception as e:
+        except OSError as e:
             print(f"[Config Error] Could not save {self.config_file}: {e}")
 
-    def disable_mode(self, mode_query: str) -> str:
-        """Disables a mode in user configuration with smart name/index resolution."""
+    @staticmethod
+    def _resolve_mode_query(mode_query: str) -> Tuple[str, str]:
+        """Resolves a mode query (by digit index or name/stem) to (target_name, canonical_key)."""
         from modes import discover_all_modes
         all_modes = discover_all_modes()
 
         target_name = mode_query.strip()
-        canonical_key = mode_query.strip().lower()
-
         matched = None
         if mode_query.strip().isdigit():
             idx = int(mode_query.strip()) - 1
@@ -320,6 +325,12 @@ class ConfigManager:
             canonical_key = os.path.splitext(os.path.basename(matched.file_path))[0].lower() if matched.file_path else matched.name.lower()
         else:
             canonical_key = os.path.splitext(os.path.basename(mode_query.strip().lower()))[0]
+
+        return target_name, canonical_key
+
+    def disable_mode(self, mode_query: str) -> str:
+        """Disables a mode in user configuration with smart name/index resolution."""
+        target_name, canonical_key = self._resolve_mode_query(mode_query)
 
         d_modes = list(self.config.get("disabled_modes", []))
         norm_existing = [os.path.splitext(os.path.basename(m))[0].lower() for m in d_modes]
@@ -331,30 +342,7 @@ class ConfigManager:
 
     def enable_mode(self, mode_query: str) -> str:
         """Enables a mode in user configuration with smart name/index resolution."""
-        from modes import discover_all_modes
-        all_modes = discover_all_modes()
-
-        target_name = mode_query.strip()
-        canonical_key = mode_query.strip().lower()
-
-        matched = None
-        if mode_query.strip().isdigit():
-            idx = int(mode_query.strip()) - 1
-            if 0 <= idx < len(all_modes):
-                matched = all_modes[idx]
-        if not matched:
-            clean_q = os.path.splitext(os.path.basename(mode_query.strip().lower()))[0]
-            for m in all_modes:
-                m_stem = os.path.splitext(os.path.basename(m.file_path))[0].lower() if m.file_path else ""
-                if clean_q == m_stem or clean_q == m.name.lower() or clean_q in m_stem or clean_q in m.name.lower():
-                    matched = m
-                    break
-
-        if matched:
-            target_name = matched.name
-            canonical_key = os.path.splitext(os.path.basename(matched.file_path))[0].lower() if matched.file_path else matched.name.lower()
-        else:
-            canonical_key = os.path.splitext(os.path.basename(mode_query.strip().lower()))[0]
+        target_name, canonical_key = self._resolve_mode_query(mode_query)
 
         d_modes = list(self.config.get("disabled_modes", []))
         clean_q = mode_query.strip().lower()
@@ -382,7 +370,7 @@ class DriverLogger:
                 os.makedirs(os.path.dirname(os.path.abspath(self.log_file)), exist_ok=True)
                 with open(self.log_file, "a", encoding="utf-8") as f:
                     f.write(f"\n--- Session Started: {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
-            except Exception as e:
+            except OSError as e:
                 print(f"[Logger Warning] Could not open log file {self.log_file}: {e}")
 
     def log(self, message: str, level: str = "INFO") -> None:
@@ -394,7 +382,7 @@ class DriverLogger:
             try:
                 with open(self.log_file, "a", encoding="utf-8") as f:
                     f.write(formatted + "\n")
-            except Exception:
+            except OSError:
                 pass
 
 
@@ -421,7 +409,7 @@ class BackgroundGameDetector:
                     self.active_game = "Active Game"
                 else:
                     self.active_game = None
-            except Exception:
+            except (subprocess.SubprocessError, OSError):
                 self.active_game = None
             time.sleep(self.check_interval)
 
@@ -439,7 +427,8 @@ class RumbleManager:
     def set_descriptors(self, fds: List[int]) -> None:
         self.open_descriptors = fds
 
-    def _pulse_thread(self, fds: List[int], duration_ms: int, strong: int, weak: int, count: int, interval_ms: int) -> None:
+    @staticmethod
+    def _pulse_thread(fds: List[int], duration_ms: int, strong: int, weak: int, count: int, interval_ms: int) -> None:
         for _ in range(count):
             for fd in fds:
                 try:
@@ -451,7 +440,7 @@ class RumbleManager:
                     os.write(fd, play_event)
                     time.sleep(duration_ms / 1000.0)
                     fcntl.ioctl(fd, EVIOCRMFF, effect_id)
-                except Exception:
+                except OSError:
                     pass
             if count > 1:
                 time.sleep(interval_ms / 1000.0)
@@ -837,29 +826,29 @@ class TouchpadFilter:
 
 def wait_for_linux_button_press(device_paths: List[str], timeout_sec: float = 12.0) -> Optional[int]:
     """Polls evdev descriptors for the next pressed button, debounces release, and returns keycode."""
-    fds = []
+    opened_fds: List[int] = []
     for p in device_paths:
         try:
-            fd = os.open(p, os.O_RDONLY | os.O_NONBLOCK)
-            fds.append(fd)
+            dev_fd = os.open(p, os.O_RDONLY | os.O_NONBLOCK)
+            opened_fds.append(dev_fd)
         except OSError:
             pass
 
-    if not fds:
+    if not opened_fds:
         return None
 
     try:
         poll_obj = select.poll()
-        for fd in fds:
-            poll_obj.register(fd, select.POLLIN)
+        for dev_fd in opened_fds:
+            poll_obj.register(dev_fd, select.POLLIN)
 
         start_t = time.perf_counter()
         while (time.perf_counter() - start_t) < timeout_sec:
             events = poll_obj.poll(50)
-            for fd, mask in events:
+            for event_fd, mask in events:
                 if mask & select.POLLIN:
                     try:
-                        data = os.read(fd, EVENT_STRUCT_SIZE * 16)
+                        data = os.read(event_fd, EVENT_STRUCT_SIZE * 16)
                     except OSError:
                         continue
                     n_evs = len(data) // EVENT_STRUCT_SIZE
@@ -871,7 +860,7 @@ def wait_for_linux_button_press(device_paths: List[str], timeout_sec: float = 12
                             drain_t = time.perf_counter()
                             while (time.perf_counter() - drain_t) < 0.25:
                                 try:
-                                    drain = os.read(fd, EVENT_STRUCT_SIZE * 16)
+                                    _ = os.read(event_fd, EVENT_STRUCT_SIZE * 16)
                                 except OSError:
                                     break
                                 time.sleep(0.02)
@@ -879,9 +868,9 @@ def wait_for_linux_button_press(device_paths: List[str], timeout_sec: float = 12
             time.sleep(0.02)
         return None
     finally:
-        for fd in fds:
+        for dev_fd in opened_fds:
             try:
-                os.close(fd)
+                os.close(dev_fd)
             except OSError:
                 pass
 
@@ -915,7 +904,7 @@ def run_linux_mapping_wizard(device_name: str, device_paths: List[str], config_m
         ("slide_prev", "PRESENTATION PREV SLIDE", 304),
     ]
 
-    mapping = {"name": device_name}
+    mapping: Dict[str, Any] = {"name": device_name}
     default_ref = DEFAULT_CONTROLLER_PROFILES.get("generic_gamepad", {})
 
     for key, prompt_label, default_code in steps:
@@ -1042,7 +1031,7 @@ def set_nintendo_player_leds(player_num: int = 1) -> None:
 def run_controller_session(
     pads: List[ControllerNode],
     profile: DeviceProfile,
-    security_mgr: Optional[Any] = None,
+    security_mgr: Optional[SecurityManagerProtocol] = None,
     logger: Optional[DriverLogger] = None,
     rumble: Optional[RumbleManager] = None,
     auto_dormant: bool = True,
@@ -1066,10 +1055,10 @@ def run_controller_session(
     cfg_mgr = ConfigManager()
     all_mappings = cfg_mgr.load_all_mappings()
     custom_map = None
-    for p_node in pads:
-        if p_node.name in all_mappings:
-            custom_map = all_mappings[p_node.name]
-            log.log(f"Loaded custom button mapping for '{p_node.name}'", level="INFO")
+    for pad_item in pads:
+        if pad_item.name in all_mappings:
+            custom_map = all_mappings[pad_item.name]
+            log.log(f"Loaded custom button mapping for '{pad_item.name}'", level="INFO")
             break
     if not custom_map and profile.name in all_mappings:
         custom_map = all_mappings[profile.name]
@@ -1123,12 +1112,12 @@ def run_controller_session(
 
     def print_status_banner() -> None:
         current_active_mode = get_current_mode()
-        sec_status = "ENABLED" if (security_mgr and security_mgr.has_code(profile.name)) else "DISABLED"
+        sec_status = "ENABLED" if (security_mgr is not None and security_mgr.has_code(profile.name)) else "DISABLED"
 
         print("\n" + "=" * 65)
         print("  CONNECTED CONTROLLERS:")
-        for idx, p_node in enumerate(pads, 1):
-            print(f"   [{idx}] {p_node.name} [{p_node.connection_type}] -> {p_node.path}")
+        for idx, p_item in enumerate(pads, 1):
+            print(f"   [{idx}] {p_item.name} [{p_item.connection_type}] -> {p_item.path}")
         print("-" * 65)
         print(f"  ACTIVE MODE [{mode_index + 1}/{total_modes}]: [{current_active_mode.name}]")
         print(f"  CHEAT-CODE UNLOCK & SUDO: [{sec_status}]")
@@ -1239,7 +1228,7 @@ def run_controller_session(
                                 if touchpad_filter.handle_key(code, value, uinput):
                                     continue
 
-                            if value == 1 and security_mgr:
+                            if value == 1 and security_mgr is not None:
                                 if security_mgr.process_key_event(code, node_info.device_type, uinput):
                                     if rumble:
                                         rumble.unlock_success()
@@ -1250,7 +1239,7 @@ def run_controller_session(
                             button_map = active_mode.get_button_map(lookup_type)
 
                             # Check custom mapping overrides
-                            action_config = None
+                            action_config: Optional[Dict[str, Any]] = None
                             if custom_map is not None:
                                 if code == custom_map.get("trackpad_click"):
                                     action_config = {"action": "mouse_btn", "code": MOUSE_BTN_LEFT}
@@ -1273,9 +1262,9 @@ def run_controller_session(
                             if log.debug:
                                 log.log(f"Key Event: code={code} (0x{code:03x}) val={value} on {node_info.name}", level="DEBUG")
 
-                            if action_config is not None:
+                            if action_config is not None and isinstance(action_config, dict):
                                 action_type = action_config.get("action")
-                                target_code = action_config.get("code", 0)
+                                target_code = int(action_config.get("code", 0))
 
                                 if action_type == "mode_cycle" and value == 1:
                                     mode_index = (mode_index + 1) % total_modes
@@ -1297,7 +1286,8 @@ def run_controller_session(
                                         smart_hold_triggered = False
 
                                 elif action_type == "combo" and value == 1:
-                                    keys_to_press = action_config.get("keys", [])
+                                    keys_raw = action_config.get("keys", [])
+                                    keys_to_press: List[int] = [int(k) for k in keys_raw] if isinstance(keys_raw, (list, tuple)) else []
                                     uinput.tap_combo(keys_to_press)
 
                                 elif action_type in ("mouse_btn", "key"):
@@ -1309,10 +1299,10 @@ def run_controller_session(
 
                                 elif action_type == "scroll":
                                     if value == 1:
-                                        active_scroll_direction = action_config.get("param", 0)
+                                        active_scroll_direction = int(action_config.get("param", 0))
                                         uinput.emit_scroll(active_scroll_direction)
                                         last_scroll_timestamp = time.perf_counter()
-                                    elif value == 0 and active_scroll_direction == action_config.get("param", 0):
+                                    elif value == 0 and active_scroll_direction == int(action_config.get("param", 0)):
                                         active_scroll_direction = 0
 
             if smart_press_timestamp is not None and not smart_hold_triggered:
@@ -1385,7 +1375,7 @@ def install_systemd_service() -> int:
     service_file = os.path.join(service_dir, "joycon-mouse.service")
     bin_path = "/usr/local/bin/joycon-mouse"
     if not os.path.exists(bin_path):
-        bin_path = sys.executable + " " + os.path.abspath(__file__)
+        bin_path = f"{sys.executable} {os.path.abspath(str(__file__))}"
 
     service_content = f"""[Unit]
 Description=Joy-Con Mouse & Universal Remote Background Driver
@@ -1410,7 +1400,7 @@ WantedBy=default.target
         print("Driver is now running automatically in the background on startup!")
         print("To view live logs: journalctl --user -u joycon-mouse.service -f\n")
         return 0
-    except Exception as e:
+    except (subprocess.SubprocessError, OSError) as e:
         print(f"[Error] Failed to install systemd service: {e}")
         return 1
 
@@ -1425,7 +1415,7 @@ def uninstall_systemd_service() -> int:
         subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
         print(f"\n[SUCCESS] Uninstalled background service: {service_file}\n")
         return 0
-    except Exception as e:
+    except (subprocess.SubprocessError, OSError) as e:
         print(f"[Error] Failed to uninstall systemd service: {e}")
         return 1
 
@@ -1626,7 +1616,7 @@ def main() -> int:
             print("Edit this file to customize your button mappings!")
             print(f"Test your mode standalone anytime by running: python3 {new_file}\n")
             return 0
-        except Exception as e:
+        except OSError as e:
             print(f"[Error] Could not create mode template: {e}")
             return 1
 
@@ -1637,7 +1627,7 @@ def main() -> int:
 
     logger = DriverLogger(debug=args.debug, log_file=args.log_file)
     rumble = RumbleManager(enabled=bool(cfg.get("rumble_enabled", True)))
-    security_mgr = SecurityManager() if SecurityManager is not None else None
+    security_mgr: Optional[SecurityManagerProtocol] = SecurityManager() if SecurityManager is not None else None
 
     if args.list:
         controllers = discover_input_devices()
@@ -1686,19 +1676,20 @@ def main() -> int:
                         print(f"  -> Initialized separate mode for {primary_pad.name}.\n")
 
         # Interactive Cheat-Code Setup Wizard if requested (interactive terminal only)
-        if security_mgr and sys.stdin.isatty() and (args.set_code or not security_mgr.has_code(chosen_profile_name)):
+        if security_mgr is not None and sys.stdin.isatty() and (args.set_code or not security_mgr.has_code(chosen_profile_name)):
             try:
                 temp_fd = os.open(primary_pad.path, os.O_RDONLY | os.O_NONBLOCK)
-                if not security_mgr.has_code(chosen_profile_name):
-                    print(f"\n[Security Prompt] No unlock cheat-code found for {chosen_profile_name}.")
-                    prompt_resp = input("  Would you like to record a secret button combination now? [Y/n]: ").strip().lower()
-                    if prompt_resp in ("", "y", "yes"):
+                try:
+                    if not security_mgr.has_code(chosen_profile_name):
+                        print(f"\n[Security Prompt] No unlock cheat-code found for {chosen_profile_name}.")
+                        prompt_resp = input("  Would you like to record a secret button combination now? [Y/n]: ").strip().lower()
+                        if prompt_resp in ("", "y", "yes"):
+                            security_mgr.record_code_interactive(temp_fd, chosen_profile_name, primary_pad.name)
+                    elif args.set_code:
                         security_mgr.record_code_interactive(temp_fd, chosen_profile_name, primary_pad.name)
-                elif args.set_code:
-                    security_mgr.record_code_interactive(temp_fd, chosen_profile_name, primary_pad.name)
+                        return 0
+                finally:
                     os.close(temp_fd)
-                    return 0
-                os.close(temp_fd)
             except OSError as err:
                 print(f"[Warning] Could not access controller for cheat-code recording: {err}")
 
