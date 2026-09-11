@@ -40,7 +40,7 @@ jobs:
           python modes/air_mouse.py
           python modes/media_remote.py
           python modes/terminal.py
-          python custom_modes/presentation.py
+          python modes/presentation.py
           python custom_modes/gaming_hotkeys.py
 
       - name: Validate Shell Script Syntax
