@@ -1,20 +1,57 @@
-# Virtual environments
+# ==============================================================================
+# Sensitive Personal Data, Security Credentials & Device Pairing Keys
+# ==============================================================================
+
+# Personal Security & Credentials
+security_config.json
+security_manager.py
+*.hash
+*.key
+*.pem
+*.secret
+*.secrets
+secrets/
+*credential*
+token.json
+*.token
+
+# Bluetooth Device Link Keys & Pairing Artifacts
+*.ltk
+*.linkkey
+bluetooth_keys/
+
+# Environment Variables
+.env
+.env.*
+*.env
+
+# Virtual Environments
 .venv/
 venv/
 ENV/
 
-# Python cache & logs
+# Python Cache & Logs
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.swp
+*.swo
+*.bak*
+*~
 *.log
+logs/
+.pytest_cache/
+build/
+dist/
 
-# Personal security & credentials
-security_config.json
-security_manager.py
-*.hash
+# Local Temporary & Scratch Files
+scratch/
+tmp/
+temp/
 
-# IDE & OS files
+# IDE & OS Files
 .idea/
 .vscode/
 .DS_Store
+Thumbs.db
 .agy_link/
