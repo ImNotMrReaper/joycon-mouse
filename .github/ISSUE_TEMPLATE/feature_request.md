@@ -1,21 +1,22 @@
 ---
-name: Feature Request / New Mode Idea
-about: Suggest an idea, controller mapping, or new modular mode
-title: '[FEAT] '
-labels: 'enhancement'
+name: ✨ Feature Request
+about: Suggest a new feature or enhancement
+title: "[Feature] "
+labels: enhancement
 assignees: ''
-
 ---
 
-**Is your feature request related to a specific use-case or application?**
-A clear description of what you're trying to do (e.g., "I want to use my Joy-Con to navigate Blender / Anki / Kodi").
+## Description
+A clear and concise description of the feature you'd like.
 
-**Describe the solution you'd like**
-What buttons on the Joy-Con or gamepad should map to what actions?
+## Use Case
+Explain the problem this feature would solve or the workflow it would improve.
 
-**Controller Hardware**
-- Controller Type (Single Joy-Con L, Single Joy-Con R, Dual Joy-Cons, Pro Controller, etc.):
-- Linux Distribution & Desktop (e.g. Ubuntu 24.04 Wayland, Arch KDE, SteamOS / Steam Deck):
+## Proposed Solution
+Describe how you'd like this feature to work.
 
-**Additional context**
-Add any other context, screenshots, or ideas here.
+## Alternatives Considered
+Any alternative solutions or workarounds you've considered.
+
+## Additional Context
+Add any other context, mockups, or references.

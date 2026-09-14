@@ -1,30 +1,30 @@
 ---
-name: Bug Report
-about: Create a report to help us improve Joy-Con Mouse
-title: '[BUG] '
-labels: 'bug'
+name: 🐛 Bug Report
+about: Report a bug or unexpected behavior
+title: "[Bug] "
+labels: bug
 assignees: ''
-
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Description
+A clear and concise description of the bug.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Connect Joy-Con via Bluetooth
-2. Run `joycon-mouse`
-3. Press button '...'
-4. See error
+## Steps to Reproduce
+1. ...
+2. ...
+3. ...
 
-**Diagnostic Output**
-Output of running the button diagnostic tool (`python3 test_buttons.py`):
-```text
-(Paste output here)
-```
+## Expected Behavior
+What you expected to happen.
 
-**Environment (please complete the following information):**
- - OS & Version: [e.g. Ubuntu 24.04, SteamOS 3.5]
- - Display Server: [Wayland or X11]
- - Kernel version: [e.g. `uname -r`]
- - Controller: [Joy-Con (L), Joy-Con (R), or Dual]
+## Actual Behavior
+What actually happened.
+
+## Environment
+- **OS:** (e.g., Ubuntu 24.04, Fedora 40, Arch Linux)
+- **Kernel:** (output of `uname -r`)
+- **Python:** (output of `python3 --version`)
+- **Desktop:** (e.g., GNOME 47, KDE Plasma 6)
+
+## Logs / Screenshots
+Attach relevant logs, terminal output, or screenshots.
